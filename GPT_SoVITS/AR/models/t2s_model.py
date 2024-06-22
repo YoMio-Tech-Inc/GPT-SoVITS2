@@ -285,6 +285,10 @@ class Text2SemanticDecoder(nn.Module):
             # ! ROPE还支持任意长度，这是比绝对位置更好的地方。
             # ! y_emb和y_pos移动到循环外面，然后在下面每次推理出新的token后在末尾添加。这样应该会极快地增加推理速度。
             # x 和逐渐增长的 y 一起输入给模型
+            # ! 换成x1,y1,x2,推理y2，能不能让声线融合变得更合理？
+            # ! 按照目前的设计是x1,x2,y1,推理y2。这种情况下如果有多个x,y的话就变成了x1,x2,x3,x4,y1,y2,y3推理y4。似乎没有x1,y1,x2,y2,x3,y3,x4,推理y4合理。
+            # ! 但是在VALLE的设计中是直接x2,y1,推理y2.所以在GPTSOVITS中才有x1,x2,y1,推理y2的设计。
+            # ! !考虑RoPE对整个序列xy_pos做，而不是对x和y分别做。
             xy_pos = torch.concat([x, y_pos], dim=1)
             y_len = y.shape[1]
             x_attn_mask_pad = F.pad(
