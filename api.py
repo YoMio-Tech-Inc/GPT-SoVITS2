@@ -408,7 +408,7 @@ def only_punc(text):
     return not any(t.isalnum() or t.isalpha() for t in text)
 
 
-def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language):
+def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language): # ! 改成list，声线融合
     t0 = ttime()
     prompt_text = prompt_text.strip("\n")
     prompt_language, text = prompt_language, text.strip("\n")

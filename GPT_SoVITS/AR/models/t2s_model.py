@@ -52,18 +52,18 @@ class Text2SemanticDecoder(nn.Module):
         # should be same as num of kmeans bin
         # assert self.EOS == 1024
         self.bert_proj = nn.Linear(1024, self.embedding_dim)
-        self.ar_text_embedding = TokenEmbedding(
-            self.embedding_dim, self.phoneme_vocab_size, self.p_dropout
-        )
-        self.ar_text_position = SinePositionalEmbedding(
-            self.embedding_dim, dropout=0.1, scale=False, alpha=True
-        )
-        self.ar_audio_embedding = TokenEmbedding(
-            self.embedding_dim, self.vocab_size, self.p_dropout
-        )
-        self.ar_audio_position = SinePositionalEmbedding(
-            self.embedding_dim, dropout=0.1, scale=False, alpha=True
-        )
+        # self.ar_text_embedding = TokenEmbedding( # ! 在GPT SOVITS2中不需要自己训练embedding。
+        #     self.embedding_dim, self.phoneme_vocab_size, self.p_dropout
+        # )
+        # self.ar_text_position = SinePositionalEmbedding(
+        #     self.embedding_dim, dropout=0.1, scale=False, alpha=True
+        # )
+        # self.ar_audio_embedding = TokenEmbedding(
+        #     self.embedding_dim, self.vocab_size, self.p_dropout
+        # )
+        # self.ar_audio_position = SinePositionalEmbedding(
+        #     self.embedding_dim, dropout=0.1, scale=False, alpha=True
+        # )
 
         self.h = TransformerEncoder(
             TransformerEncoderLayer(
@@ -245,20 +245,34 @@ class Text2SemanticDecoder(nn.Module):
         return loss, acc
 
     # 需要看下这个函数和 forward 的区别以及没有 semantic 的时候 prompts 输入什么
+    # ! GPT-SOVITS2更改
+    # ! x维度和prompts做embedding后统一，GPTSOVITS中使用的方法是训练两个embedding，维度都是512，用一个MLP将bert的1024变成512.并且音素的embedding维度也是512
+    # ! 而hubert则经过码本后重新再进入embedding变成512维度。
+    # ! 在GPT SOVITS2中换了一个方法。
+    # ! BGE m3 维度为1024. 并且GPT SOVITS2中没有音素。
+    # ! hubert是768维度。
+    # ! 考虑几个选择: 1. 训练一个MLP层维度为(1024, 768)将BGE m3变成768维度。或者直接(1024, 512)和(768, 512)统一到512维度，这样和GPT SOVITS的维度保持一致
+    # ! 2. 直接去掉BGE m3末尾的256维度，直接变成768维度，这样和hubert的维度保持一致。
+    # ! 3. 用降维方法例如PCA将BGE m3降维到768维度。
+    # ! 目前优先选择第一种方法，训练一个MLP层。
+    # ! 将码本变大，比如总数16384
+    # ! 理论上可以做到把码本完全去掉。问题在于: 去掉之后，如何学习在哪里结束语音。
     def infer(
         self,
-        x,
+        x, # ! x是全部文本的token (len, 1) 在GPT SOVITS2中无意义。
         x_lens,
-        prompts,
+        prompts, # ! prompts是参考音频的码本结果，后续考虑改成hubert直出不用经过encode码本。
         bert_feature,
         top_k: int = -100,
         early_stop_num: int = -1,
         temperature: float = 1.0,
     ):
-        x = self.ar_text_embedding(x)
-        x = x + self.bert_proj(bert_feature.transpose(1, 2))
-        x = self.ar_text_position(x)
-
+        # x = self.ar_text_embedding(x)
+        # x = x + self.bert_proj(bert_feature.transpose(1, 2))
+        # x = self.ar_text_position(x)
+        
+        x = self.bert_proj(bert_feature.transpose(1, 2)) # ! GPT SOVITS2的处理。记得MLP换成(1024, 768)
+        
         # AR Decoder
         y = prompts
         prefix_len = y.shape[1]
@@ -266,8 +280,10 @@ class Text2SemanticDecoder(nn.Module):
         x_attn_mask = torch.zeros((x_len, x_len), dtype=torch.bool)
         stop = False
         for _ in tqdm(range(1500)):
-            y_emb = self.ar_audio_embedding(y)
-            y_pos = self.ar_audio_position(y_emb)
+            y_emb = self.ar_audio_embedding(y) # ! 为什么不直接解码码本呢？这个embedding是为了从码本idx到embedding的映射，那么直接解码码本不就行了吗？注意！解码码本不是直接vq_model.decode而是vq_model.quantizer.decode()
+            y_pos = self.ar_audio_position(y_emb) # ! 换成RoPE，并且每次循环只推理最新的token而不是全部token，这很重要因为GPT从原理上来说为了更好推理下一个token，embedding就会被设计成绝对位置或者这种RoPE。
+            # ! ROPE还支持任意长度，这是比绝对位置更好的地方。
+            # ! y_emb和y_pos移动到循环外面，然后在下面每次推理出新的token后在末尾添加。这样应该会极快地增加推理速度。
             # x 和逐渐增长的 y 一起输入给模型
             xy_pos = torch.concat([x, y_pos], dim=1)
             y_len = y.shape[1]
@@ -288,12 +304,12 @@ class Text2SemanticDecoder(nn.Module):
             xy_dec, _ = self.h(
                 (xy_pos, None),
                 mask=xy_attn_mask,
-            )
+            ) 
             logits = self.ar_predict_layer(xy_dec[:, -1])
             samples = topk_sampling(
                 logits, top_k=top_k, top_p=1.0, temperature=temperature
             )
-
+            # ! 按照上面说的，对samples算一次解码+RoPE，然后拼接到y_pos后面，这样就可以一直推理下去。
             if early_stop_num != -1 and (y.shape[1] - prefix_len) > early_stop_num:
                 print("use early stop num:", early_stop_num)
                 stop = True
