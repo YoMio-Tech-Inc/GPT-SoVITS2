@@ -1,26 +1,27 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_model.py
 # reference: https://github.com/lifeiteng/vall-e
 import torch
-from tqdm import tqdm
-
-from AR.models.utils import make_pad_mask
-from AR.models.utils import (
-    topk_sampling,
-    sample,
-    logits_to_probs,
-    multinomial_sample_one_no_sync,
-    dpo_loss,
-    make_reject_y, 
-    get_batch_logps
-)
-from AR.modules.embedding import SinePositionalEmbedding
-from AR.modules.embedding import TokenEmbedding
-from AR.modules.transformer import LayerNorm
-from AR.modules.transformer import TransformerEncoder
-from AR.modules.transformer import TransformerEncoderLayer
 from torch import nn
 from torch.nn import functional as F
 from torchmetrics.classification import MulticlassAccuracy
+from tqdm import tqdm
+
+from AR.models.utils import (
+    dpo_loss,
+    get_batch_logps,
+    logits_to_probs,
+    make_pad_mask,
+    make_reject_y,
+    multinomial_sample_one_no_sync,
+    sample,
+    topk_sampling,
+)
+from AR.modules.embedding import SinePositionalEmbedding, TokenEmbedding
+from AR.modules.transformer import (
+    LayerNorm,
+    TransformerEncoder,
+    TransformerEncoderLayer,
+)
 
 default_config = {
     "embedding_dim": 512,
@@ -116,7 +117,7 @@ class Text2SemanticDecoder(nn.Module):
             (0, y_len),
             value=True,
         )
-        
+
         y_attn_mask = F.pad(
             torch.triu(
                 torch.ones(y_len, y_len, dtype=torch.bool, device=x.device),
@@ -150,7 +151,9 @@ class Text2SemanticDecoder(nn.Module):
 
         reject_y, reject_y_lens = make_reject_y(y, y_lens)
 
-        xy_pos, xy_attn_mask, targets = self.make_input_data(x, x_lens, y, y_lens, bert_feature)
+        xy_pos, xy_attn_mask, targets = self.make_input_data(
+            x, x_lens, y, y_lens, bert_feature
+        )
 
         xy_dec, _ = self.h(
             (xy_pos, None),
@@ -160,7 +163,9 @@ class Text2SemanticDecoder(nn.Module):
         logits = self.ar_predict_layer(xy_dec[:, x_len:])
 
         ###### DPO #############
-        reject_xy_pos, reject_xy_attn_mask, reject_targets = self.make_input_data(x, x_lens, reject_y, reject_y_lens, bert_feature)
+        reject_xy_pos, reject_xy_attn_mask, reject_targets = self.make_input_data(
+            x, x_lens, reject_y, reject_y_lens, bert_feature
+        )
 
         reject_xy_dec, _ = self.h(
             (reject_xy_pos, None),
@@ -175,9 +180,11 @@ class Text2SemanticDecoder(nn.Module):
         loss_1 = F.cross_entropy(logits.permute(0, 2, 1), targets, reduction="sum")
         acc = self.ar_accuracy_metric(logits.permute(0, 2, 1).detach(), targets).item()
 
-        A_logits, R_logits = get_batch_logps(logits, reject_logits, targets, reject_targets)
+        A_logits, R_logits = get_batch_logps(
+            logits, reject_logits, targets, reject_targets
+        )
         loss_2, _, _ = dpo_loss(A_logits, R_logits, 0, 0, 0.2, reference_free=True)
-        
+
         loss = loss_1 + loss_2
 
         return loss, acc
@@ -256,12 +263,12 @@ class Text2SemanticDecoder(nn.Module):
     # ! 3. 用降维方法例如PCA将BGE m3降维到768维度。
     # ! 目前优先选择第一种方法，训练一个MLP层。
     # ! 将码本变大，比如总数16384
-    # ! 理论上可以做到把码本完全去掉。问题在于: 去掉之后，如何学习在哪里结束语音。
+    # ! 理论上可以做到把码本完全去掉。问题在于: 去掉之后，如何学习在哪里结束语音。(否决，决定不去掉码本)
     def infer(
         self,
-        x, # ! x是全部文本的token (len, 1) 在GPT SOVITS2中无意义。
+        x,  # ! x是全部文本的token (len, 1) 在GPT SOVITS2中无意义。
         x_lens,
-        prompts, # ! prompts是参考音频的码本结果，后续考虑改成hubert直出不用经过encode码本。
+        prompts,  # ! prompts是参考音频的码本结果，后续考虑改成hubert直出不用经过encode码本。
         bert_feature,
         top_k: int = -100,
         early_stop_num: int = -1,
@@ -270,9 +277,11 @@ class Text2SemanticDecoder(nn.Module):
         # x = self.ar_text_embedding(x)
         # x = x + self.bert_proj(bert_feature.transpose(1, 2))
         # x = self.ar_text_position(x)
-        
-        x = self.bert_proj(bert_feature.transpose(1, 2)) # ! GPT SOVITS2的处理。记得MLP换成(1024, 768)
-        
+
+        x = self.bert_proj(
+            bert_feature.transpose(1, 2)
+        )  # ! GPT SOVITS2的处理。记得MLP换成(1024, 768)
+
         # AR Decoder
         y = prompts
         prefix_len = y.shape[1]
@@ -280,8 +289,12 @@ class Text2SemanticDecoder(nn.Module):
         x_attn_mask = torch.zeros((x_len, x_len), dtype=torch.bool)
         stop = False
         for _ in tqdm(range(1500)):
-            y_emb = self.ar_audio_embedding(y) # ! 为什么不直接解码码本呢？这个embedding是为了从码本idx到embedding的映射，那么直接解码码本不就行了吗？注意！解码码本不是直接vq_model.decode而是vq_model.quantizer.decode()
-            y_pos = self.ar_audio_position(y_emb) # ! 换成RoPE，并且每次循环只推理最新的token而不是全部token，这很重要因为GPT从原理上来说为了更好推理下一个token，embedding就会被设计成绝对位置或者这种RoPE。
+            y_emb = self.ar_audio_embedding(
+                y
+            )  # ! 为什么不直接解码码本呢？这个embedding是为了从码本idx到embedding的映射，那么直接解码码本不就行了吗？注意！解码码本不是直接vq_model.decode而是vq_model.quantizer.decode()
+            y_pos = self.ar_audio_position(
+                y_emb
+            )  # ! 换成RoPE，并且每次循环只推理最新的token而不是全部token，这很重要因为GPT从原理上来说为了更好推理下一个token，embedding就会被设计成绝对位置或者这种RoPE。
             # ! ROPE还支持任意长度，这是比绝对位置更好的地方。
             # ! y_emb和y_pos移动到循环外面，然后在下面每次推理出新的token后在末尾添加。这样应该会极快地增加推理速度。
             # x 和逐渐增长的 y 一起输入给模型
@@ -308,7 +321,7 @@ class Text2SemanticDecoder(nn.Module):
             xy_dec, _ = self.h(
                 (xy_pos, None),
                 mask=xy_attn_mask,
-            ) 
+            )
             logits = self.ar_predict_layer(xy_dec[:, -1])
             samples = topk_sampling(
                 logits, top_k=top_k, top_p=1.0, temperature=temperature
@@ -358,7 +371,7 @@ class Text2SemanticDecoder(nn.Module):
 
         # AR Decoder
         y = prompts
-        
+
         x_len = x.shape[1]
         x_attn_mask = torch.zeros((x_len, x_len), dtype=torch.bool)
         stop = False
@@ -393,35 +406,36 @@ class Text2SemanticDecoder(nn.Module):
             ref_free = True
 
         x_attn_mask_pad = F.pad(
-                    x_attn_mask,
-                    (0, y_len),  ###xx的纯0扩展到xx纯0+xy纯1，(x,x+y)
-                    value=True,
-                )
+            x_attn_mask,
+            (0, y_len),  ###xx的纯0扩展到xx纯0+xy纯1，(x,x+y)
+            value=True,
+        )
         y_attn_mask = F.pad(  ###yy的右上1扩展到左边xy的0,(y,x+y)
             torch.triu(torch.ones(y_len, y_len, dtype=torch.bool), diagonal=1),
             (x_len, 0),
             value=False,
         )
-        xy_attn_mask = torch.concat([x_attn_mask_pad, y_attn_mask], dim=0).to(
-            x.device
-        )
-        
+        xy_attn_mask = torch.concat([x_attn_mask_pad, y_attn_mask], dim=0).to(x.device)
 
         for idx in tqdm(range(1500)):
-            
             xy_dec, _ = self.h((xy_pos, None), mask=xy_attn_mask, cache=cache)
             logits = self.ar_predict_layer(
                 xy_dec[:, -1]
             )  ##不用改，如果用了cache的默认就是只有一帧，取最后一帧一样的
             # samples = topk_sampling(logits, top_k=top_k, top_p=1.0, temperature=temperature)
-            if(idx==0):###第一次跑不能EOS否则没有了
+            if idx == 0:  ###第一次跑不能EOS否则没有了
                 logits = logits[:, :-1]  ###刨除1024终止符号的概率
             samples = sample(
-                logits[0], y, top_k=top_k, top_p=top_p, repetition_penalty=1.35, temperature=temperature
+                logits[0],
+                y,
+                top_k=top_k,
+                top_p=top_p,
+                repetition_penalty=1.35,
+                temperature=temperature,
             )[0].unsqueeze(0)
             # 本次生成的 semantic_ids 和之前的 y 构成新的 y
             # print(samples.shape)#[1,1]#第一个1是bs
-            y = torch.concat([y, samples], dim=1) 
+            y = torch.concat([y, samples], dim=1)
 
             if early_stop_num != -1 and (y.shape[1] - prefix_len) > early_stop_num:
                 print("use early stop num:", early_stop_num)
@@ -434,17 +448,17 @@ class Text2SemanticDecoder(nn.Module):
                 # if prompts.shape[1] == y.shape[1]:
                 #     y = torch.concat([y, torch.zeros_like(samples)], dim=1)
                 #     print("bad zero prediction")
-                if y.shape[1]==0:
+                if y.shape[1] == 0:
                     y = torch.concat([y, torch.zeros_like(samples)], dim=1)
                     print("bad zero prediction")
                 print(f"T2S Decoding EOS [{prefix_len} -> {y.shape[1]}]")
                 break
-            
+
             ####################### update next step ###################################
             cache["first_infer"] = 0
             if cache["y_emb"] is not None:
                 y_emb = torch.cat(
-                    [cache["y_emb"], self.ar_audio_embedding(y[:, -1:])], dim = 1
+                    [cache["y_emb"], self.ar_audio_embedding(y[:, -1:])], dim=1
                 )
                 cache["y_emb"] = y_emb
                 y_pos = self.ar_audio_position(y_emb)
@@ -465,4 +479,4 @@ class Text2SemanticDecoder(nn.Module):
             )
         if ref_free:
             return y[:, :-1], 0
-        return y[:, :-1], idx-1
+        return y[:, :-1], idx - 1
