@@ -31,3 +31,5 @@ BGE-m3(1024), mHubert-146(768), w2v-bert-2.0(1024) 取低者。
 纯自回归->自回归+同一speaker下one shot训练样本回归
 #### vits decoder改动
 维度和上述一样变成768/1024取决于用mHubert or w2v-bert-2.0
+#### 格式
+统一半精度, hubert 16000采样 vits 32000采样

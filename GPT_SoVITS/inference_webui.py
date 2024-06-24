@@ -55,9 +55,9 @@ import gradio as gr
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 import numpy as np
 import librosa
-from feature_extractor import cnhubert
+from GPT_SoVITS.feature_extractor import hubert
 
-cnhubert.cnhubert_base_path = cnhubert_base_path
+hubert.cnhubert_base_path = cnhubert_base_path
 
 from module.models import SynthesizerTrn
 from AR.models.t2s_lightning_module import Text2SemanticLightningModule
@@ -129,7 +129,7 @@ class DictToAttrRecursive(dict):
             raise AttributeError(f"Attribute {item} not found")
 
 
-ssl_model = cnhubert.get_model()
+ssl_model = hubert.get_model()
 if is_half == True:
     ssl_model = ssl_model.half().to(device)
 else:

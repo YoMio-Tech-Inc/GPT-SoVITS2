@@ -3,8 +3,7 @@ import pdb
 import re
 
 import cn2an
-from pypinyin import lazy_pinyin, Style
-
+from pypinyin import Style, lazy_pinyin
 from text.symbols import punctuation
 from text.tone_sandhi import ToneSandhi
 from text.zh_normalization.text_normlization import TextNormalizer
@@ -18,7 +17,6 @@ pinyin_to_symbol_map = {
 }
 
 import jieba_fast.posseg as psg
-
 
 rep_map = {
     "：": ",",
@@ -166,6 +164,7 @@ if __name__ == "__main__":
     text = "呣呣呣～就是…大人的鼹鼠党吧？"
     text = "你好"
     text = text_normalize(text)
+    print(text)
     print(g2p(text))
 
 

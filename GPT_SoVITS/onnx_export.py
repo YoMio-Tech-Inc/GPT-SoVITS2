@@ -3,10 +3,10 @@ from AR.models.t2s_lightning_module_onnx import Text2SemanticLightningModule
 import torch
 import torchaudio
 from torch import nn
-from feature_extractor import cnhubert
+from GPT_SoVITS.feature_extractor import hubert
 cnhubert_base_path = "pretrained_models/chinese-hubert-base"
-cnhubert.cnhubert_base_path=cnhubert_base_path
-ssl_model = cnhubert.get_model()
+hubert.cnhubert_base_path=cnhubert_base_path
+ssl_model = hubert.get_model()
 from text import cleaned_text_to_sequence
 import soundfile
 from my_utils import load_audio

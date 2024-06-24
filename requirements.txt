@@ -26,3 +26,5 @@ jieba
 LangSegment>=0.2.0
 Faster_Whisper
 wordsegment
+sentence_transformers
+pyloudnorm

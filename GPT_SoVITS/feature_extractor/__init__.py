@@ -1,6 +1,6 @@
-from . import cnhubert, whisper_enc
+from . import hubert, whisper_enc
 
 content_module_map = {
-    'cnhubert': cnhubert,
+    'cnhubert': hubert,
     'whisper': whisper_enc
 }
