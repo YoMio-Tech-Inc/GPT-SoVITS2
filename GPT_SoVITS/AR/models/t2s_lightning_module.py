@@ -35,13 +35,11 @@ class Text2SemanticLightningModule(LightningModule):
     def training_step(self, batch: Dict, batch_idx: int):
         opt = self.optimizers()
         scheduler = self.lr_schedulers()
-        forward=self.model.forward if self.config["train"].get("if_dpo",False)==True else self.model.forward_old
+        forward=self.model.forward # ! 先去掉对比学习。
         loss, acc = forward(
-            batch["phoneme_ids"],
-            batch["phoneme_ids_len"],
+            batch["bert_feature"],
             batch["semantic_ids"],
             batch["semantic_ids_len"],
-            batch["bert_feature"],
         )
         self.manual_backward(loss)
         if batch_idx > 0 and batch_idx % 4 == 0:

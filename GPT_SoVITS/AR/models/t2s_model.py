@@ -143,7 +143,7 @@ class Text2SemanticDecoder(nn.Module):
 
         return xy_pos, xy_attn_mask, targets
 
-    def forward(self, x, x_lens, y, y_lens, bert_feature):
+    def forward_dpo(self, x, x_lens, y, y_lens, bert_feature):
         """
         x: phoneme_ids
         y: semantic_ids
@@ -189,14 +189,12 @@ class Text2SemanticDecoder(nn.Module):
 
         return loss, acc
 
-    def forward_old(self, x, x_lens, y, y_lens, bert_feature):
+    def forward(self, x, x_lens, y, y_lens):
         """
-        x: phoneme_ids
+        x: bert_feature
         y: semantic_ids
         """
-        x = self.ar_text_embedding(x)
-        x = x + self.bert_proj(bert_feature.transpose(1, 2))
-        x = self.ar_text_position(x)
+        x = x.transpose(1, 2) # 确保维度正确
         x_mask = make_pad_mask(x_lens)
 
         y_mask = make_pad_mask(y_lens)
@@ -208,8 +206,9 @@ class Text2SemanticDecoder(nn.Module):
         y, targets = self.pad_y_eos(codes, y_mask_int, eos_id=self.EOS)
         x_len = x_lens.max()
         y_len = y_lens.max()
-        y_emb = self.ar_audio_embedding(y)
-        y_pos = self.ar_audio_position(y_emb)
+        # y_emb = self.ar_audio_embedding(y)
+        # y_pos = self.ar_audio_position(y_emb)
+        y_pos = y # ! 这里等数据处理的适合
 
         xy_padding_mask = torch.concat([x_mask, y_mask], dim=1)
         ar_xy_padding_mask = xy_padding_mask
@@ -251,7 +250,7 @@ class Text2SemanticDecoder(nn.Module):
         acc = self.ar_accuracy_metric(logits.detach(), targets).item()
         return loss, acc
 
-    # 需要看下这个函数和 forward 的区别以及没有 semantic 的时候 prompts 输入什么
+
     # ! GPT-SOVITS2更改
     # ! x维度和prompts做embedding后统一，GPTSOVITS中使用的方法是训练两个embedding，维度都是512，用一个MLP将bert的1024变成512.并且音素的embedding维度也是512
     # ! 而hubert则经过码本后重新再进入embedding变成512维度。

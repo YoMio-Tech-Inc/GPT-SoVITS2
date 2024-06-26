@@ -1,23 +1,16 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/data/dataset.py
 # reference: https://github.com/lifeiteng/vall-e
-import pdb
-import sys
+import os
 
 # sys.path.append("/data/docker/liujing04/gpt-vits/mq-vits-s1bert_no_bert")
-import traceback, os
-from typing import Dict
-from typing import List
+import traceback
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-import torch, json
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-from transformers import AutoTokenizer
-
+import torch
 from text import cleaned_text_to_sequence
-
-# from config import exp_dir
+from torch.utils.data import DataLoader, Dataset
 
 
 def batch_sequences(sequences: List[np.array], axis: int = 0, pad_value: int = 0):
@@ -51,10 +44,6 @@ class Text2SemanticDataset(Dataset):
         max_sample: int = None,
         max_sec: int = 100,
         pad_val: int = 1024,
-        # min value of phoneme/sec
-        min_ps_ratio: int = 3,
-        # max value of phoneme/sec
-        max_ps_ratio: int = 25,
     ) -> None:
         super().__init__()
 
@@ -90,9 +79,6 @@ class Text2SemanticDataset(Dataset):
 
         # max seconds of semantic token
         self.max_sec = max_sec
-        self.min_ps_ratio = min_ps_ratio
-        self.max_ps_ratio = max_ps_ratio
-
         if max_sample is not None:
             self.semantic_data = self.semantic_data[:max_sample]
 
@@ -121,11 +107,10 @@ class Text2SemanticDataset(Dataset):
         idx = 0
         num_not_in = 0
         num_deleted_bigger = 0
-        num_deleted_ps = 0
         for i in range(semantic_data_len):
             # 先依次遍历
             # get str
-            item_name = self.semantic_data.iloc[i,0]
+            item_name = self.semantic_data.iloc[i, 0]
             # print(self.phoneme_data)
             try:
                 phoneme, word2ph, text = self.phoneme_data[item_name]
@@ -135,44 +120,23 @@ class Text2SemanticDataset(Dataset):
                 num_not_in += 1
                 continue
 
-            semantic_str = self.semantic_data.iloc[i,1]
+            semantic_str = self.semantic_data.iloc[i, 1]
             # get token list
             semantic_ids = [int(idx) for idx in semantic_str.split(" ")]
-            # (T), 是否需要变成 (1, T) -> 不需要，因为需要求 len
-            # 过滤掉太长的样本
-            if (
-                len(semantic_ids) > self.max_sec * self.hz
-            ):  #########1###根据token个数推测总时长过滤时长60s（config里）#40*25=1k
-                num_deleted_bigger += 1
-                continue
-            # (T, ), 这个速度不会很慢，所以可以在一开始就处理，无需在 __getitem__ 里面单个处理####
+
             phoneme = phoneme.split(" ")
 
             try:
                 phoneme_ids = cleaned_text_to_sequence(phoneme)
-            except:
+            except Exception:
                 traceback.print_exc()
                 # print(f"{item_name} not in self.phoneme_data !")
                 num_not_in += 1
                 continue
             # if len(phoneme_ids) >400:###########2：改为恒定限制为semantic/2.5就行
-            if (
-                len(phoneme_ids) > self.max_sec * self.hz / 2.5
-            ):  ###########2：改为恒定限制为semantic/2.5就行
-                num_deleted_ps += 1
-                continue
             # if len(semantic_ids) > 1000:###########3
             #     num_deleted_bigger += 1
             #     continue
-
-            ps_ratio = len(phoneme_ids) / (len(semantic_ids) / self.hz)
-
-            if (
-                ps_ratio > self.max_ps_ratio or ps_ratio < self.min_ps_ratio
-            ):  ##########4#3~25#每秒多少个phone
-                num_deleted_ps += 1
-                # print(item_name)
-                continue
 
             self.semantic_phoneme.append((semantic_ids, phoneme_ids))
             idx += 1
@@ -194,11 +158,6 @@ class Text2SemanticDataset(Dataset):
             print(
                 f"deleted {num_deleted_bigger} audios who's duration are bigger than {self.max_sec} seconds"
             )
-        if num_deleted_ps > 0:
-            # 4702 for LibriTTS, LirbriTTS 是标注数据, 是否需要筛？=> 需要，有值为 100 的极端值
-            print(
-                f"deleted {num_deleted_ps} audios who's phoneme/sec are bigger than {self.max_ps_ratio} or smaller than {self.min_ps_ratio}"
-            )
         """
         there are 31 semantic datas not in phoneme datas
         deleted 34 audios who's duration are bigger than 54 seconds
@@ -216,30 +175,20 @@ class Text2SemanticDataset(Dataset):
         return len(self.semantic_phoneme)
 
     def __getitem__(self, idx: int) -> Dict:
-        semantic_ids, phoneme_ids = self.semantic_phoneme[idx]
+        semantic_ids = self.semantic_phoneme[idx]
         item_name = self.item_names[idx]
-        phoneme_ids_len = len(phoneme_ids)
         # semantic tokens target
         semantic_ids_len = len(semantic_ids)
 
-        flag = 0
         path_bert = "%s/%s.pt" % (self.path3, item_name)
-        if os.path.exists(path_bert) == True:
-            bert_feature = torch.load(path_bert, map_location="cpu")
-        else:
-            flag = 1
-        if flag == 1:
-            # bert_feature=torch.zeros_like(phoneme_ids,dtype=torch.float32)
-            bert_feature = None
-        else:
-            assert bert_feature.shape[-1] == len(phoneme_ids)
-        return {
+        bert_feature = torch.load(path_bert, map_location="cpu").to(torch.float16)
+        bert_feature_len = bert_feature.shape[-1]  # ! 判断是否获得了正确的长度
+        return {  # ! 把semantic_ids decode回去。
             "idx": idx,
-            "phoneme_ids": phoneme_ids,
-            "phoneme_ids_len": phoneme_ids_len,
             "semantic_ids": semantic_ids,
             "semantic_ids_len": semantic_ids_len,
             "bert_feature": bert_feature,
+            "bert_feature_len": bert_feature_len,
         }
 
     def get_sample_length(self, idx: int):

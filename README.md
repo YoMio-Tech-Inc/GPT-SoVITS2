@@ -18,8 +18,11 @@
 
 #### 码本的变动
 单码本-> 2码本/4码本
+#### GPT改动
+换成qwen2-0.3b
 #### 音频编码的变动
-cnhubert-> **w2v-bert-2.0(暂定,此为meta做的目前训练集最夸张4.6m小时多语言预训练。如果结果像外国人说中文就换cnhubert-large)**/cnhubert-large/mHubert-146
+cnhubert-> ~~w2v-bert-2.0(暂定,此为meta做的目前训练集最夸张4.6m小时多语言预训练。如果结果像外国人说中文就换cnhubert-large)~~/cnhubert-large/mHubert-147
+我发现w2v-bert-2.0训练有点难，mHubert-147训练会比较简单，体积差了四倍，而且实测fp16直接会炸，只能fp32.并且mHubert已经够大了(600MB)
 #### 文本编码的改动
 去掉音素以及相应embedding
 cn-roberta ->  BGE-m3
@@ -38,13 +41,13 @@ x1+y1+x2+y2+x3+y3+x4+y4+x5->y5
 x1+x2+x3+x4+x5+y1+y2+y3+y4->y5
 更自然一点.无法严格证明
 #### 维度的改动
-MLP(768, 512) -> 无MLP直接1024维度。因为w2v-bert-2.0和bge-m3都是1024维，天生一对啊.
+MLP(768, 512) -> ~~无MLP直接1024维度。因为w2v-bert-2.0和bge-m3都是1024维，天生一对啊.~~ MLP(1024, 768)
 #### 训练方法改动
 纯自回归->自回归+同一speaker下zero shot训练样本回归
 #### vits改动
 可能想办法把维度扩大.(256->512)
 #### 格式
-统一半精度, hubert 16000采样 vits 32000采样 对所有音频做响度统一
+统一~~半精度~~单精度(实测之后发现半精度会炸), hubert 16000采样 vits 32000采样 对所有音频做响度统一
 #### 总结
 其实总体上来说,改动基本都是
 1. 用上了更先进的预训练模型
@@ -61,3 +64,21 @@ MLP(768, 512) -> 无MLP直接1024维度。因为w2v-bert-2.0和bge-m3都是1024�
 **QQ: 1715069210**
 
 **微信: JunityZ**
+
+#### Quick Note
+今天看了很多论文包括VALLE2的论文又有很多新的想法.有一个很重要的事情就是目前这个ar_audio_embedding和ar_text_embedding其实是一个历史遗留问题了。
+
+因为audioLM率先使用了hubert+kmeans获得token，但是因为kmean量化学习不需要学整体数据，而是直接从hubert分布上学习。所以会加一个后续的embedding。
+
+但如果用了vq，vq本身就已经做了学习了，所以vq不需要再加一个embedding，这里历史遗留问题一直都有加embedding，虽然影响应该不会很大，但是去掉的话会合理很多。
+
+还有就是 audio lm 同时用了semantic和acoustic，分别通过hubert和soundstream。但其实GPT SoVITS也有这个，meltransferencoder获得acoustic，而hubert获得semantic，所以非常巧。
+
+而VALLE系一般用的是EnCodec，EnCodec是直接从音频得到token，才会需要再做一个embedding,因为本身就没出embedding，但是很明显用hubert就不需要了，因为hubert的输出就是embedding。
+
+反过来，我们用hubert embedding得到token，而EnCodec是得到token之后反过来做embedding。
+
+所以原版的GPTSoVITS包括之前参考的AUdio LM更像是参考了基于EnCodec系列TTS的做法，但实际上这两个是不一样的。
+
+#### TODO
+重写量化, 直接调用vector-quantize-pytorch的Group Residual VQ
