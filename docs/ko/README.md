@@ -1,249 +1,84 @@
-<div align="center">
-
-<h1>GPT-SoVITS-WebUI</h1>
-소량의 데이터로 음성 변환 및 음성 합성을 지원하는 강력한 WebUI.<br><br>
-
-[![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Boss/GPT-SoVITS)
-
-<img src="https://counter.seku.su/cmoe?name=gptsovits&theme=r34" /><br>
-
-[![Open In Colab](https://img.shields.io/badge/Colab-F9AB00?style=for-the-badge&logo=googlecolab&color=525252)](https://colab.research.google.com/github/RVC-Boss/GPT-SoVITS/blob/main/colab_webui.ipynb)
-[![License](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models%20Repo-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/GPT-SoVITS/tree/main)
-[![Discord](https://img.shields.io/discord/1198701940511617164?color=%23738ADB&label=Discord&style=for-the-badge)](https://discord.gg/dnrgs5GHfG)
-
-[**English**](../../README.md) | [**中文简体**](../cn/README.md) | [**日本語**](../ja/README.md) | **한국어** | [**Türkçe**](../tr/README.md)
-
-</div>
-
----
-
-## 기능:
-
-1. **제로샷 텍스트 음성 변환 (TTS):** 5초의 음성 샘플을 입력하면 즉시 텍스트를 음성으로 변환할 수 있습니다.
-
-2. **소량의 데이터 TTS:** 1분의 훈련 데이터만으로 모델을 미세 조정하여 음성 유사도와 실제감을 향상시킬 수 있습니다.
-
-3. **다국어 지원:** 훈련 데이터셋과 다른 언어의 추론을 지원하며, 현재 영어, 일본어, 중국어를 지원합니다.
-
-4. **WebUI 도구:** 음성 반주 분리, 자동 훈련 데이터셋 분할, 중국어 자동 음성 인식(ASR) 및 텍스트 주석 등의 도구를 통합하여 초보자가 훈련 데이터셋과 GPT/SoVITS 모델을 생성하는 데 도움을 줍니다.
-
-**데모 비디오를 확인하세요! [demo video](https://www.bilibili.com/video/BV12g4y1m7Uw)**
-
-보지 못한 발화자의 퓨샷(few-shot) 파인튜닝 데모:
-
-https://github.com/RVC-Boss/GPT-SoVITS/assets/129054828/05bee1fa-bdd8-4d85-9350-80c060ab47fb
-
-**사용자 설명서: [简体中文](https://www.yuque.com/baicaigongchang1145haoyuangong/ib3g1e) | [English](https://rentry.co/GPT-SoVITS-guide#/)**
-
-## 설치
-
-### 테스트 통과 환경
-
-- Python 3.9, PyTorch 2.0.1, CUDA 11
-- Python 3.10.13, PyTorch 2.1.2, CUDA 12.3
-- Python 3.9, Pytorch 2.2.2, macOS 14.4.1 (Apple Slilicon)
-- Python 3.9, PyTorch 2.2.2, CPU 장치
-
-_참고: numba==0.56.4 는 python<3.11 을 필요로 합니다._
-
-### Windows
-
-Windows 사용자라면 (win>=10에서 테스트됨), [0206fix3 패키지](https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/main/GPT-SoVITS-beta-fast-inference-branch.7z?download=true) 또는 [0217fix2 패키지](https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/main/GPT-SoVITS-beta0217fix2.7z?download=true)를 다운로드하고 압축을 풀어 _go-webui.bat_ 파일을 더블 클릭하면 GPT-SoVITS-WebUI를 시작할 수 있습니다.
-
-_참고: 0206 버전은 추론 속도가 더 빠르지만, 0217 새 버전은 추론 품질이 더 좋습니다. 필요에 따라 선택할 수 있습니다._
-
-### Linux
-
-```bash
-conda create -n GPTSoVits python=3.9
-conda activate GPTSoVits
-bash install.sh
-```
-
-### macOS
-
-**주의: Mac에서 GPU로 훈련된 모델은 다른 OS에서 훈련된 모델에 비해 품질이 낮습니다. 해당 문제를 해결하기 전까지 MacOS에선 CPU를 사용하여 훈련을 진행합니다.**
-
-1. `xcode-select --install`을 실행하여 Xcode 커맨드라인 도구를 설치하세요.
-2. `brew install ffmpeg` 또는 `conda install ffmpeg`을 실행하여 FFmpeg를 설치하세요.
-3. 위의 단계를 완료한 후, 다음 명령어를 실행하여 이 프로젝트를 설치하세요.
-
-```bash
-conda create -n GPTSoVits python=3.9
-conda activate GPTSoVits
-
-pip install -r requirements.txt
-```
-
-### 수동 설치
-
-#### 의존성 설치
-
-```bash
-pip install -r requirements.txt
-```
-
-#### FFmpeg 설치
-
-##### Conda 사용자
-
-```bash
-conda install ffmpeg
-```
-
-##### Ubuntu/Debian 사용자
-
-```bash
-sudo apt install ffmpeg
-sudo apt install libsox-dev
-conda install -c conda-forge 'ffmpeg<7'
-```
-
-##### Windows 사용자
-
-[ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffmpeg.exe)와 [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffprobe.exe)를 GPT-SoVITS root 디렉토리에 넣습니다.
-
-### Docker에서 사용
-
-#### docker-compose.yaml 설정
-
-0. 이미지 태그: 코드 저장소가 빠르게 업데이트되고 패키지가 느리게 빌드되고 테스트되므로, 현재 빌드된 최신 도커 이미지를 [Docker Hub](https://hub.docker.com/r/breakstring/gpt-sovits)에서 확인하고 필요에 따라 Dockerfile을 사용하여 로컬에서 빌드할 수 있습니다.
-
-1. 환경 변수:
-
-- is_half: 반정밀/배정밀 제어. "SSL 추출" 단계에서 4-cnhubert/5-wav32k 디렉토리의 내용을 올바르게 생성할 수 없는 경우, 일반적으로 이것 때문입니다. 실제 상황에 따라 True 또는 False로 조정할 수 있습니다.
-
-2. 볼륨 설정, 컨테이너 내의 애플리케이션 루트 디렉토리를 /workspace로 설정합니다. 기본 docker-compose.yaml에는 실제 예제가 나열되어 있으므로 업로드/다운로드를 쉽게 할 수 있습니다.
-
-3. shm_size: Windows의 Docker Desktop의 기본 사용 가능한 메모리가 너무 작아 오류가 발생할 수 있으므로 실제 상황에 따라 조정합니다.
-
-4. deploy 섹션의 gpu 관련 내용은 시스템 및 실제 상황에 따라 조정합니다.
-
-#### docker compose로 실행
-
-```
-docker compose -f "docker-compose.yaml" up -d
-```
-
-#### docker 명령으로 실행
-
-위와 동일하게 실제 상황에 맞게 매개변수를 수정한 다음 다음 명령을 실행합니다:
-
-```
-docker run --rm -it --gpus=all --env=is_half=False --volume=G:\GPT-SoVITS-DockerTest\output:/workspace/output --volume=G:\GPT-SoVITS-DockerTest\logs:/workspace/logs --volume=G:\GPT-SoVITS-DockerTest\SoVITS_weights:/workspace/SoVITS_weights --workdir=/workspace -p 9880:9880 -p 9871:9871 -p 9872:9872 -p 9873:9873 -p 9874:9874 --shm-size="16G" -d breakstring/gpt-sovits:xxxxx
-```
-
-## 사전 훈련된 모델
-
-[GPT-SoVITS Models](https://huggingface.co/lj1995/GPT-SoVITS)에서 사전 훈련된 모델을 다운로드하고 `GPT_SoVITS\pretrained_models`에 넣습니다.
-
-중국어 자동 음성 인식(ASR), 음성 반주 분리 및 음성 제거를 위해 [Damo ASR Model](https://modelscope.cn/models/damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch/files), [Damo VAD Model](https://modelscope.cn/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/files) 및 [Damo Punc Model](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/files)을 다운로드하고 `tools/asr/models`에 넣습니다.
-
-UVR5(음성/반주 분리 및 잔향 제거)를 위해 [UVR5 Weights](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/uvr5_weights)에서 모델을 다운로드하고 `tools/uvr5/uvr5_weights`에 넣습니다.
-
-## 데이터셋 형식
-
-텍스트 음성 합성(TTS) 주석 .list 파일 형식:
-
-```
-vocal_path|speaker_name|language|text
-```
-
-언어 사전:
-
-- 'zh': 중국어
-- 'ja': 일본어
-- 'en': 영어
-
-예시:
-
-```
-D:\GPT-SoVITS\xxx/xxx.wav|xxx|en|I like playing Genshin.
-```
-
-## 할 일 목록
-
-- [ ] **최우선순위:**
-
-  - [x] 일본어 및 영어 지역화.
-  - [ ] 사용자 가이드.
-  - [x] 일본어 및 영어 데이터셋 미세 조정 훈련.
-
-- [ ] **기능:**
-
-  - [ ] 제로샷 음성 변환 (5초) / 소량의 음성 변환 (1분).
-  - [ ] TTS 속도 제어.
-  - [ ] 향상된 TTS 감정 제어.
-  - [ ] SoVITS 토큰 입력을 단어 확률 분포로 변경해 보세요.
-  - [ ] 영어 및 일본어 텍스트 프론트 엔드 개선.
-  - [ ] 작은 크기와 큰 크기의 TTS 모델 개발.
-  - [x] Colab 스크립트.
-  - [ ] 훈련 데이터셋 확장 (2k 시간에서 10k 시간).
-  - [ ] 더 나은 sovits 기본 모델 (향상된 오디오 품질).
-  - [ ] 모델 블렌딩.
-
-## (추가적인) 명령줄에서 실행하는 방법
-명령줄을 사용하여 UVR5용 WebUI 열기
-```
-python tools/uvr5/webui.py "<infer_device>" <is_half> <webui_port_uvr5>
-```
-브라우저를 열 수 없는 경우 UVR 처리를 위해 아래 형식을 따르십시오. 이는 오디오 처리를 위해 mdxnet을 사용하는 것입니다.
-```
-python mdxnet.py --model --input_root --output_vocal --output_ins --agg_level --format --device --is_half_precision 
-```
-명령줄을 사용하여 데이터세트의 오디오 분할을 수행하는 방법은 다음과 같습니다.
-```
-python audio_slicer.py \
-    --input_path "<path_to_original_audio_file_or_directory>" \
-    --output_root "<directory_where_subdivided_audio_clips_will_be_saved>" \
-    --threshold <volume_threshold> \
-    --min_length <minimum_duration_of_each_subclip> \
-    --min_interval <shortest_time_gap_between_adjacent_subclips> 
-    --hop_size <step_size_for_computing_volume_curve>
-```
-명령줄을 사용하여 데이터 세트 ASR 처리를 수행하는 방법입니다(중국어만 해당).
-```
-python tools/asr/funasr_asr.py -i <input> -o <output>
-```
-ASR 처리는 Faster_Whisper(중국어를 제외한 ASR 마킹)를 통해 수행됩니다.
-
-(진행률 표시줄 없음, GPU 성능으로 인해 시간 지연이 발생할 수 있음)
-```
-python ./tools/asr/fasterwhisper_asr.py -i <input> -o <output> -l <language>
-```
-사용자 정의 목록 저장 경로가 활성화되었습니다.
-
-## 감사의 말
-
-다음 프로젝트와 기여자들에게 특별히 감사드립니다:
-
-### 이론 연구
-- [ar-vits](https://github.com/innnky/ar-vits)
-- [SoundStorm](https://github.com/yangdongchao/SoundStorm/tree/master/soundstorm/s1/AR)
-- [vits](https://github.com/jaywalnut310/vits)
-- [TransferTTS](https://github.com/hcy71o/TransferTTS/blob/master/models.py#L556)
-- [contentvec](https://github.com/auspicious3000/contentvec/)
-- [hifi-gan](https://github.com/jik876/hifi-gan)
-- [fish-speech](https://github.com/fishaudio/fish-speech/blob/main/tools/llama/generate.py#L41)
-### 사전 학습 모델
-- [Chinese Speech Pretrain](https://github.com/TencentGameMate/chinese_speech_pretrain)
-- [Chinese-Roberta-WWM-Ext-Large](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large)
-### 추론용 텍스트 프론트엔드
-- [paddlespeech zh_normalization](https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization)
-- [LangSegment](https://github.com/juntaosun/LangSegment)
-### WebUI 도구
-- [ultimatevocalremovergui](https://github.com/Anjok07/ultimatevocalremovergui)
-- [audio-slicer](https://github.com/openvpi/audio-slicer)
-- [SubFix](https://github.com/cronrpc/SubFix)
-- [FFmpeg](https://github.com/FFmpeg/FFmpeg)
-- [gradio](https://github.com/gradio-app/gradio)
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
-- [FunASR](https://github.com/alibaba-damo-academy/FunASR)
-
-
-## 모든 기여자들에게 감사드립니다 ;)
-
-<a href="https://github.com/RVC-Boss/GPT-SoVITS/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Boss/GPT-SoVITS" />
-</a>
+# GPT-SoVITS2
+
+이 이름은 GPT-SoVITS의 저자 [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0)로부터 허가를 받았습니다.
+### 이 프로젝트는 아직 개발 중이며, [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 기반으로 개선되었습니다. 주요 개선 사항은 다음과 같습니다:
+
+1. **다국어 네이티브 지원**: 중국어, 일본어, 영어에 국한되지 않고 전 세계의 모든 언어를 지원합니다.
+2. **언어를 지정할 필요가 없음**: 언제든지 다국어로, 자유롭게 다국어를 혼합하여 말할 수 있습니다.
+3. **다국어 텍스트 감정 추출**: 언어의 감정 분석이 더 정교해져서 말하는 방식이 더 감정적으로 풍부해집니다.
+4. **Zero Shot의 향상**: 이제 모델을 미세 조정하는 것을 권장하지 않으며, 몇 초의 대상 오디오만으로 직접 제로 샷을 수행합니다.
+5. **참조 오디오 융합**: 여러 참조 오디오를 업로드할 수 있으며, 결과적으로 여러 오디오를 융합한 소리를 얻을 수 있습니다.
+6. **더 빠른 추론**: positional embedding을 RoPE로 변경하여, 다음 토큰을 추론할 때마다 전체 시퀀스의 embedding을 다시 계산할 필요가 없습니다.
+
+### **데이터 및 협력 모집**: 현재 데이터를 모집하고 있습니다. QQ 1715069210, 데이터가 적합한 경우 프로젝트에 크레딧이 부여됩니다.
+
+#### 현재 소스 코드에서 변경된 내용을 정리 중입니다. # !를 검색하면 주석을 찾을 수 있습니다. 관심이 있으시면 위의 QQ에서 교류를 희망합니다.
+
+### 변경 목록
+
+#### 코드북의 변경
+싱글 코드북 -> 2 코드북/4 코드북
+#### GPT 변경
+qwen2-0.3b로 변경
+#### 오디오 인코딩의 변경
+cnhubert -> ~~w2v-bert-2.0(잠정적으로, 이는 meta에서 현재 훈련된 가장 큰 4.6m 시간 다국어 사전 훈련입니다. 결과가 외국인이 중국어를 말하는 것처럼 들리면 cnhubert-large로 변경)~~/cnhubert-large/mHubert-147
+w2v-bert-2.0 훈련이 다소 어렵다는 것을 발견하고, mHubert-147 훈련이 비교적 쉬우며, 크기가 네 배 작고, 실제 테스트에서 fp16은 직접 충돌하며, fp32만 사용할 수 있습니다. 또한 mHubert는 이미 충분히 큽니다(600MB).
+#### 텍스트 인코딩의 변경
+음소 및 해당 embedding 제거
+cn-roberta -> BGE-m3
+#### 위치 인코딩의 변경
+텍스트와 음성 인코딩을 각각 sinusoidal -> 전체를 RoPE embedding으로 변경.
+#### xy 결합 embedding의 변경(실험적)
+기존의
+x1+x2+y1 -> y2
+를
+x1+y1+x2 -> y2
+로 변경하고, 시퀀스 전체가 하나의 RoPE embedding을 공유
+이론적으로는 이렇게 하는 것이 더 많은 대상 오디오를 확장하여 음성 라인을 융합하는 데 더 적합합니다.
+예를 들어,
+x1+y1+x2+y2+x3+y3+x4+y4+x5 -> y5
+가
+x1+x2+x3+x4+x5+y1+y2+y3+y4 -> y5
+보다 더 자연스럽게 느껴질 수 있습니다. 엄밀히 증명할 수는 없습니다.
+#### 차원의 변경
+MLP(768, 512) -> ~~MLP 없이 직접 1024 차원. w2v-bert-2.0과 bge-m3가 모두 1024 차원이므로 완벽한 조합~~ MLP(1024, 768)
+#### 훈련 방법의 변경
+순수 자회귀 -> 자회귀 + 동일 스피커의 제로 샷 훈련 샘플 회귀
+#### vits 변경
+차원을 확장하는 방법을 모색합니다.(256 -> 512)
+#### 형식
+통일 ~~반 정밀도~~ 단 정밀도(실제 테스트 결과 반 정밀도에서는 충돌), hubert 16000 샘플링 vits 32000 샘플링 모든 오디오의 음량을 통일
+#### 요약
+사실 전반적으로 보면, 변경 사항은 기본적으로
+1. 더 발전된 사전 훈련 모델을 사용
+2. 더 발전된 모델이 더 크므로 원래의 차원도 확장
+3. 제로 샷을 중시하기 때문에 훈련 방법에 제로 샷 훈련을 추가
+4. 원래 코드에서는 중국어에만 bert를 사용했으나, BGE m3와 같은 다국어 embedding으로 변경함으로써 전 언어를 원활하게 추출
+5. 원래 싱글 코드북만 있었고 크기가 1024에 불과하여 hubert 특징 추출 가이드 능력이 부족. 더블 코드북으로 변경하여 정보량이 1024^2 = 1048576으로 증가, 4 코드북은 더욱 과장되지만 데이터가 충분하지 않으므로 단계적으로 시도
+6. 원래 느린 이유 중 하나는 GPT가 매번 시퀀스 전체의 embedding과 positional embedding을 다시 계산해야 했기 때문. 그러나 RoPE로 변경하면 이 단점이 사라짐
+7. 원래는 음성 라인 융합에 관심이 없었으나, 나중에 별도의 브랜치를 만들어 원래의 GPT-SoVITS에서 음성 라인 융합을 구현. 그러나 초기 설계에는 이 목표가 전혀 포함되어 있지 않았음. 花さん의 비디오에서는 GPT 부분에서 사용되는 참조 오디오에서 얻은 음성 특징과 vits에서의 참조 오디오가 다를 수 있어 음성 라인 융합이 가능하다고 언급. 그러나 내 구현에서는 두 부분 모두에 여러 오디오가 포함됨
+8. 원래 합리적이지 않다고 생각한 부분을 변경함. 예를 들어, 이미 hubert를 오디오의 embedding으로 사용했는데, 왜 다시 ar_audio_embedding이 필요한가. 그리고 원래 음소가 있었기 때문에 음소에 대한 embedding이 필요했고, 여러 개의 개별 embedding이 훈련되고 있었지만 이미 bert와 hubert를 사용하고 있었음. 또한, 개별 텍스트 embedding과 오디오 embedding은 문맥의 오디오와 텍스트를 고려하지 않으므로 직접 GPT에 입력하여 attention으로 관계를 찾는 것이 더 나음
+
+여기까지 읽으셨다면 이해하셨을 것입니다. 이 프로젝트에 참여를 환영합니다!
+
+**QQ: 1715069210**
+
+**微信: JunityZ**
+
+#### 빠른 메모
+오늘 많은 논문을 읽었고, VALLE2의 논문에서 많은 새로운 아이디어를 얻었습니다. 현재 ar_audio_embedding과 ar_text_embedding은 역사적인 유물이라는 중요한 사실이 있습니다.
+
+audioLM이 처음으로 hubert+kmeans를 사용하여 토큰을 얻었지만, kmean 양자화 학습은 전체 데이터를 학습할 필요가 없으며, hubert 분포에서 직접 학습. 그래서 후속 embedding이 추가되었습니다.
+
+그러나 vq를 사용하면 vq 자체가 학습을 이미 수행했기 때문에 추가 embedding이 필요하지 않습니다. 여기서 역사적인 문제는 항상 embedding이 추가되고 있다는 점입니다. 영향은 크지 않겠지만, 제거하면 더 합리적일 것입니다.
+
+또한 audio lm은 hubert와 soundstream을 통해 각각 semantic과 acoustic을 사용합니다. 그러나 GPT SoVITS도 이 기능을 가지고 있으며, meltransferencoder는 acoustic을, hubert는 semantic을 얻습니다. 매우 교묘합니다.
+
+VALLE 계열은 일반적으로 EnCodec을 사용하며, EnCodec은 오디오에서 직접 토큰을 얻기 때문에 다시 embedding을 수행해야 합니다. hubert는 출력이 embedding이므로 필요하지 않습니다.
+
+반대로 우리는 hubert embedding을 사용하여 토큰을 얻고, EnCodec은 토큰을 얻은 후 embedding을 수행합니다.
+
+따라서 원래의 GPTSoVITS와 이전에 참고한 AUdio LM은 EnCodec 기반 TTS의 방법을 참고한 것처럼 보이지만, 실제로는 이 둘이 다릅니다.
+
+#### TODO
+양자화를 다시 작성하고, vector-quantize-pytorch의 Group Residual VQ를 직접 호출
