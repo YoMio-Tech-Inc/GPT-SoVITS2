@@ -1,258 +1,84 @@
-<div align="center">
-
-<h1>GPT-SoVITS-WebUI</h1>
-Güçlü Birkaç Örnekli Ses Dönüştürme ve Metinden Konuşmaya Web Arayüzü.<br><br>
-
-[![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Boss/GPT-SoVITS)
-
-<img src="https://counter.seku.su/cmoe?name=gptsovits&theme=r34" /><br>
-
-[![Open In Colab](https://img.shields.io/badge/Colab-F9AB00?style=for-the-badge&logo=googlecolab&color=525252)](https://colab.research.google.com/github/RVC-Boss/GPT-SoVITS/blob/main/colab_webui.ipynb)
-[![License](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models%20Repo-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/GPT-SoVITS/tree/main)
-[![Discord](https://img.shields.io/discord/1198701940511617164?color=%23738ADB&label=Discord&style=for-the-badge)](https://discord.gg/dnrgs5GHfG)
-
-[**English**](../../README.md) | [**中文简体**](../cn/README.md) | [**日本語**](../ja/README.md) | [**한국어**](../ko/README.md) | **Türkçe**
-
-</div>
-
----
-
-## Özellikler:
-
-1. **Sıfır Örnekli Metinden Konuşmaya:** 5 saniyelik bir vokal örneği girin ve anında metinden konuşmaya dönüşümünü deneyimleyin.
-
-2. **Birkaç Örnekli Metinden Konuşmaya:** Daha iyi ses benzerliği ve gerçekçiliği için modeli yalnızca 1 dakikalık eğitim verisiyle ince ayarlayın.
-
-3. **Çapraz Dil Desteği:** Eğitim veri setinden farklı dillerde çıkarım, şu anda İngilizce, Japonca ve Çinceyi destekliyor.
-
-4. **Web Arayüzü Araçları:** Entegre araçlar arasında vokal eşliğinde ayırma, otomatik eğitim seti segmentasyonu, Çince ASR ve metin etiketleme bulunur ve yeni başlayanların eğitim veri setleri ve GPT/SoVITS modelleri oluşturmalarına yardımcı olur.
-
-**[Demo videomuzu](https://www.bilibili.com/video/BV12g4y1m7Uw) buradan izleyin!**
-
-Görünmeyen konuşmacılar birkaç örnekli ince ayar demosu:
-
-https://github.com/RVC-Boss/GPT-SoVITS/assets/129054828/05bee1fa-bdd8-4d85-9350-80c060ab47fb
-
-**Kullanıcı Kılavuzu: [简体中文](https://www.yuque.com/baicaigongchang1145haoyuangong/ib3g1e) | [English](https://rentry.co/GPT-SoVITS-guide#/)**
-
-## Kurulum
-
-### Test Edilmiş Ortamlar
-
-- Python 3.9, PyTorch 2.0.1, CUDA 11
-- Python 3.10.13, PyTorch 2.1.2, CUDA 12.3
-- Python 3.9, PyTorch 2.2.2, macOS 14.4.1 (Apple silikon)
-- Python 3.9, PyTorch 2.2.2, CPU cihazları
-
-_Not: numba==0.56.4, py<3.11 gerektirir_
-
-### Windows
-
-Eğer bir Windows kullanıcısıysanız (win>=10 ile test edilmiştir), [0206fix3 paketini](https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/main/GPT-SoVITS-beta-fast-inference-branch.7z?download=true) veya [0217fix2 paketini](https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/main/GPT-SoVITS-beta0217fix2.7z?download=true) indirip _go-webui.bat_ dosyasına çift tıklayarak GPT-SoVITS-WebUI'yi başlatabilirsiniz.
-
-_Not: 0206 sürümünün çıkarım hızı daha hızlıdır, 0217 yeni sürümünün çıkarım kalitesi ise daha iyidir. İhtiyacınıza göre seçim yapabilirsiniz._
-
-### Linux
-
-```bash
-conda create -n GPTSoVits python=3.9
-conda activate GPTSoVits
-bash install.sh
-```
-
-### macOS
-
-**Not: Mac'lerde GPU'larla eğitilen modeller, diğer cihazlarda eğitilenlere göre önemli ölçüde daha düşük kalitede sonuç verir, bu nedenle geçici olarak CPU'lar kullanıyoruz.**
-
-1. `xcode-select --install` komutunu çalıştırarak Xcode komut satırı araçlarını yükleyin
-2. `brew install ffmpeg` veya `conda install ffmpeg` komutunu çalıştırarak FFmpeg'i yükleyin.
-3. Aşağıdaki komutları çalıştırarak programı yükleyin:
-
-```bash
-conda create -n GPTSoVits python=3.9
-conda activate GPTSoVits
-
-pip install -r requirements.txt
-```
-
-### El ile Yükleme
-
-#### Bağımlılıkları Yükleme
-
-```bash
-pip install -r requirements.txt
-```
-
-#### FFmpeg'i Yükleme
-
-##### Conda Kullanıcıları
-
-```bash
-conda install ffmpeg
-```
-
-##### Ubuntu/Debian Kullanıcıları
-
-```bash
-sudo apt install ffmpeg
-sudo apt install libsox-dev
-conda install -c conda-forge 'ffmpeg<7'
-```
-
-##### Windows Kullanıcıları
-
-[ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffmpeg.exe) ve [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffprobe.exe) dosyalarını indirin ve GPT-SoVITS kök dizinine yerleştirin.
-
-### Docker Kullanarak
-
-#### docker-compose.yaml yapılandırması
-
-0. Görüntü etiketleri hakkında: Kod tabanındaki hızlı güncellemeler ve görüntüleri paketleme ve test etme işleminin yavaş olması nedeniyle, lütfen şu anda paketlenmiş en son görüntüleri kontrol etmek için [Docker Hub](https://hub.docker.com/r/breakstring/gpt-sovits) adresini kontrol edin ve durumunuza göre seçim yapın veya alternatif olarak, kendi ihtiyaçlarınıza göre bir Dockerfile kullanarak yerel olarak oluşturun.
-1. Ortam Değişkenleri：
-
-- is_half: Yarım hassasiyet/çift hassasiyeti kontrol eder. Bu genellikle "SSL çıkarma" adımı sırasında 4-cnhubert/5-wav32k dizinleri altındaki içeriğin doğru şekilde oluşturulmamasının nedenidir. Gerçek durumunuza göre True veya False olarak ayarlayın.
-
-2. Birim Yapılandırması，Kapsayıcı içindeki uygulamanın kök dizini /workspace olarak ayarlanmıştır. Varsayılan docker-compose.yaml, içerik yükleme/indirme için bazı pratik örnekler listeler.
-3. shm_size： Windows üzerinde Docker Desktop için varsayılan kullanılabilir bellek çok küçüktür, bu da anormal işlemlere neden olabilir. Kendi durumunuza göre ayarlayın.
-4. Dağıtım bölümü altında, GPU ile ilgili ayarlar sisteminize ve gerçek koşullara göre dikkatlice ayarlanmalıdır.
-
-#### docker compose ile çalıştırma
-
-```
-docker compose -f "docker-compose.yaml" up -d
-```
-
-#### docker komutu ile çalıştırma
-
-Yukarıdaki gibi, ilgili parametreleri gerçek durumunuza göre değiştirin, ardından aşağıdaki komutu çalıştırın:
-
-```
-docker run --rm -it --gpus=all --env=is_half=False --volume=G:\GPT-SoVITS-DockerTest\output:/workspace/output --volume=G:\GPT-SoVITS-DockerTest\logs:/workspace/logs --volume=G:\GPT-SoVITS-DockerTest\SoVITS_weights:/workspace/SoVITS_weights --workdir=/workspace -p 9880:9880 -p 9871:9871 -p 9872:9872 -p 9873:9873 -p 9874:9874 --shm-size="16G" -d breakstring/gpt-sovits:xxxxx
-```
-
-## Önceden Eğitilmiş Modeller
-
-Önceden eğitilmiş modelleri [GPT-SoVITS Modelleri](https://huggingface.co/lj1995/GPT-SoVITS) adresinden indirin ve `GPT_SoVITS/pretrained_models` dizinine yerleştirin.
-
-UVR5 (Vokal/Eşlik Ayırma ve Yankı Giderme, ayrıca) için, modelleri [UVR5 Ağırlıkları](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/uvr5_weights) adresinden indirin ve `tools/uvr5/uvr5_weights` dizinine yerleştirin.
-
-Çin bölgesindeki kullanıcılar, aşağıdaki bağlantıları girerek ve "Bir kopya indir"i tıklayarak bu iki modeli indirebilirler
-
-- [GPT-SoVITS Modelleri](https://www.icloud.com.cn/iclouddrive/056y_Xog_HXpALuVUjscIwTtg#GPT-SoVITS_Models)
-
-- [UVR5 Ağırlıkları](https://www.icloud.com.cn/iclouddrive/0bekRKDiJXboFhbfm3lM2fVbA#UVR5_Weights)
-
-Çince ASR (ayrıca) için, modelleri [Damo ASR Modeli](https://modelscope.cn/models/damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch/files), [Damo VAD Modeli](https://modelscope.cn/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/files), ve [Damo Punc Modeli](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/files) adreslerinden indirin ve `tools/asr/models` dizinine yerleştirin.
-
-İngilizce veya Japonca ASR (ayrıca) için, modelleri [Faster Whisper Large V3](https://huggingface.co/Systran/faster-whisper-large-v3) adresinden indirin ve `tools/asr/models` dizinine yerleştirin. Ayrıca, [diğer modeller](https://huggingface.co/Systran) daha küçük disk alanı kaplamasıyla benzer etkiye sahip olabilir. 
-
-Çin bölgesindeki kullanıcılar, aşağıdaki bağlantıları girerek bu modeli indirebilirler
-
-- [Faster Whisper Large V3](https://www.icloud.com/iclouddrive/0c4pQxFs7oWyVU1iMTq2DbmLA#faster-whisper-large-v3) ("Bir kopya indir"i tıklayarak)
-
-- [Faster Whisper Large V3](https://hf-mirror.com/Systran/faster-whisper-large-v3) (HuggingFace ayna sitesi)
-
-## Veri Seti Formatı
-
-TTS açıklama .list dosya formatı:
-
-```
-vocal_path|speaker_name|language|text
-```
-
-Dil sözlüğü:
-
-- 'zh': Çince
-- 'ja': Japonca
-- 'en': İngilizce
-
-Örnek:
-
-```
-D:\GPT-SoVITS\xxx/xxx.wav|xxx|en|I like playing Genshin.
-```
-
-## Yapılacaklar Listesi
-
-- [ ] **Yüksek Öncelikli:**
-
-  - [x] Japonca ve İngilizceye yerelleştirme.
-  - [x] Kullanıcı kılavuzu.
-  - [x] Japonca ve İngilizce veri seti ince ayar eğitimi.
-
-- [ ] **Özellikler:**
-  - [ ] Sıfır örnekli ses dönüştürme (5s) / birkaç örnekli ses dönüştürme (1dk).
-  - [ ] Metinden konuşmaya konuşma hızı kontrolü.
-  - [ ] Gelişmiş metinden konuşmaya duygu kontrolü.
-  - [ ] SoVITS token girdilerini kelime dağarcığı olasılık dağılımına değiştirme denemesi.
-  - [ ] İngilizce ve Japonca metin ön ucunu iyileştirme.
-  - [ ] Küçük ve büyük boyutlu metinden konuşmaya modelleri geliştirme.
-  - [x] Colab betikleri.
-  - [ ] Eğitim veri setini genişletmeyi dene (2k saat -> 10k saat).
-  - [ ] daha iyi sovits temel modeli (geliştirilmiş ses kalitesi)
-  - [ ] model karışımı
-
-## (Ekstra) Komut satırından çalıştırma yöntemi
-UVR5 için Web Arayüzünü açmak için komut satırını kullanın
-```
-python tools/uvr5/webui.py "<infer_device>" <is_half> <webui_port_uvr5>
-```
-Bir tarayıcı açamıyorsanız, UVR işleme için aşağıdaki formatı izleyin,Bu ses işleme için mdxnet kullanıyor
-```
-python mdxnet.py --model --input_root --output_vocal --output_ins --agg_level --format --device --is_half_precision 
-```
-Veri setinin ses segmentasyonu komut satırı kullanılarak bu şekilde yapılır
-```
-python audio_slicer.py \
-    --input_path "<orijinal_ses_dosyası_veya_dizininin_yolu>" \
-    --output_root "<alt_bölümlere_ayrılmış_ses_kliplerinin_kaydedileceği_dizin>" \
-    --threshold <ses_eşiği> \
-    --min_length <her_bir_alt_klibin_minimum_süresi> \
-    --min_interval <bitişik_alt_klipler_arasındaki_en_kısa_zaman_aralığı> 
-    --hop_size <ses_eğrisini_hesaplamak_için_adım_boyutu>
-```
-Veri seti ASR işleme komut satırı kullanılarak bu şekilde yapılır (Yalnızca Çince)
-```
-python tools/asr/funasr_asr.py -i <girdi> -o <çıktı>
-```
-ASR işleme Faster_Whisper aracılığıyla gerçekleştirilir (Çince dışındaki ASR işaretleme)
-
-(İlerleme çubukları yok, GPU performansı zaman gecikmelerine neden olabilir)
-```
-python ./tools/asr/fasterwhisper_asr.py -i <girdi> -o <çıktı> -l <dil>
-```
-Özel bir liste kaydetme yolu etkinleştirildi
-
-## Katkı Verenler
-
-Özellikle aşağıdaki projelere ve katkıda bulunanlara teşekkür ederiz:
-
-### Teorik Araştırma
-- [ar-vits](https://github.com/innnky/ar-vits)
-- [SoundStorm](https://github.com/yangdongchao/SoundStorm/tree/master/soundstorm/s1/AR)
-- [vits](https://github.com/jaywalnut310/vits)
-- [TransferTTS](https://github.com/hcy71o/TransferTTS/blob/master/models.py#L556)
-- [contentvec](https://github.com/auspicious3000/contentvec/)
-- [hifi-gan](https://github.com/jik876/hifi-gan)
-- [fish-speech](https://github.com/fishaudio/fish-speech/blob/main/tools/llama/generate.py#L41)
-### Önceden Eğitilmiş Modeller
-- [Chinese Speech Pretrain](https://github.com/TencentGameMate/chinese_speech_pretrain)
-- [Chinese-Roberta-WWM-Ext-Large](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large)
-### Tahmin İçin Metin Ön Ucu
-- [paddlespeech zh_normalization](https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization)
-- [LangSegment](https://github.com/juntaosun/LangSegment)
-### WebUI Araçları
-- [ultimatevocalremovergui](https://github.com/Anjok07/ultimatevocalremovergui)
-- [audio-slicer](https://github.com/openvpi/audio-slicer)
-- [SubFix](https://github.com/cronrpc/SubFix)
-- [FFmpeg](https://github.com/FFmpeg/FFmpeg)
-- [gradio](https://github.com/gradio-app/gradio)
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
-- [FunASR](https://github.com/alibaba-damo-academy/FunASR)
-  
-## Tüm katkıda bulunanlara çabaları için teşekkürler
-
-<a href="https://github.com/RVC-Boss/GPT-SoVITS/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Boss/GPT-SoVITS" />
-</a>
+# GPT-SoVITS2
+
+Bu isim, GPT-SoVITS'in yazarı [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0) tarafından izin alınmıştır.
+### Bu proje hala geliştirme aşamasındadır ve [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) temel alınarak iyileştirilmiştir. Ana iyileştirme noktaları aşağıdaki gibidir:
+
+1. **Yerel çoklu dil desteği**: Sadece Çince, Japonca ve İngilizce ile sınırlı kalmayıp dünya üzerindeki herhangi bir dili destekler.
+2. **Dil belirtmeye gerek yok**: Her zaman çoklu dilde olabilir ve diller arasında serbestçe karışık konuşabilirsiniz.
+3. **Çoklu dil metin duygu çıkarımı**: Dilin duygu analizini daha doğru yapar, böylece konuşma daha duygusal olur.
+4. **Zero Shot iyileştirmesi**: Artık model ince ayarı önerilmez, sadece birkaç saniyelik hedef ses kaydı ile doğrudan zero shot yapılır.
+5. **Referans ses kaydı birleşimi**: Birden fazla referans ses kaydı yükleyebilir ve elde edilen ses, birden fazla ses kaydının birleşimi olur.
+6. **Daha hızlı çıkarım**: Positional embedding'i RoPE olarak değiştirerek, her bir token çıkarımında tüm dizinin embedding'ini yeniden hesaplama gereksinimini ortadan kaldırır.
+
+### **Veri ve iş birliği çağrısı**: Şu anda veri toplanmaktadır. QQ 1715069210, uygun veri setleri proje kredisi alacaktır.
+
+#### Şu anda kaynak kodda değişiklik fikirleri düzenlenmektedir. # ! araması yaparak açıklamaları bulabilirsiniz. İlginiz varsa yukarıdaki QQ ile iletişime geçmekten çekinmeyin.
+
+### Değişiklik Listesi
+
+#### Kod kitabındaki değişiklikler
+Tek kod kitabı -> 2 kod kitabı/4 kod kitabı
+#### GPT değişiklikleri
+qwen2-0.3b ile değiştirildi
+#### Ses kodlamasındaki değişiklikler
+cnhubert -> ~~w2v-bert-2.0 (geçici olarak, bu meta tarafından şu anda en çarpıcı 4.6m saatlik çok dilli ön eğitim yapılmaktadır. Sonuç yabancının Çince konuşması gibi olursa cnhubert-large ile değiştirilecek)~~/cnhubert-large/mHubert-147
+w2v-bert-2.0 eğitiminin biraz zor olduğunu fark ettim, mHubert-147 eğitimi daha kolay olacak, boyutu dört kat daha küçük ve gerçek testte fp16 doğrudan çöküyor, sadece fp32 kullanılabilir. Ayrıca mHubert zaten yeterince büyük (600MB).
+#### Metin kodlamasındaki değişiklikler
+Fonemleri ve ilgili embedding'leri kaldırın
+cn-roberta -> BGE-m3
+#### Pozisyon kodlamasındaki değişiklikler
+Metin ve ses kodlamasını ayrı ayrı sinusoidal -> global olarak RoPE embedding yapın.
+#### xy birleşim embedding değişikliği (deneysel)
+Orijinalden
+x1+x2+y1 -> y2
+değiştir
+x1+y1+x2 -> y2
+ve tüm dizi tek bir RoPE embedding'i paylaşır
+Teorik olarak, bu şekilde daha fazla hedef ses kaydını genişletmek ve ses hattını birleştirmek daha uygun olur
+Örneğin
+x1+y1+x2+y2+x3+y3+x4+y4+x5 -> y5
+hissi
+x1+x2+x3+x4+x5+y1+y2+y3+y4 -> y5
+daha doğal olabilir. Kesin olarak kanıtlanamaz.
+#### Boyut değişiklikleri
+MLP(768, 512) -> ~~MLP olmadan doğrudan 1024 boyut. w2v-bert-2.0 ve bge-m3 her ikisi de 1024 boyut olduğu için mükemmel bir uyum~~ MLP(1024, 768)
+#### Eğitim yönteminde değişiklikler
+Saf oto-regresif -> oto-regresif + aynı hoparlörde zero shot eğitim örneği regresyonu
+#### vits değişiklikleri
+Boyutu genişletmenin bir yolunu bulmak (256 -> 512)
+#### Format
+Birleştirilmiş ~~yarım hassasiyet~~ tek hassasiyet (gerçek testten sonra yarım hassasiyet çöküyor), hubert 16000 örnekleme vits 32000 örnekleme tüm seslerde ses yüksekliği birleştirme
+#### Özet
+Aslında genel olarak, değişiklikler temel olarak
+1. Daha gelişmiş ön eğitim modelleri kullanmak
+2. Daha gelişmiş modeller daha büyük olduğundan, orijinal boyutu genişletmek
+3. Zero shot'a dikkat ettiğimiz için eğitim yöntemine zero shot eğitimi eklemek
+4. Orijinal kodda yalnızca Çince için bert kullanılıyordu, BGE m3 gibi çok dilli embedding'e değiştirildiğinde tüm dilleri sorunsuzca çıkarabilir
+5. Orijinalde sadece tek kod kitabı vardı ve boyutu 1024'tü, bu da orijinal hubert özelliği çıkarma kılavuz yeteneğinin yetersiz olmasına neden oluyordu. Çift kod kitabı ile bilgi miktarı doğrudan 1024^2 = 1048576'ya dönüşür, dört kod kitabı daha abartılıdır ancak yeterli veri olmayabilir, adım adım deneyin
+6. Orijinal hızın yavaş olmasının bir nedeni, GPT'nin her seferinde tüm dizinin embedding ve positional embedding'ini yeniden hesaplamasıydı. Ancak RoPE ile değiştirildiğinde bu dezavantaj ortadan kalkar
+7. Orijinalde ses hattı birleştirme konusunda ilgi yoktu, daha sonra GPT-SoVITS üzerinde bir dal yaparak ses hattı birleştirmesini gerçekleştirdim, ancak başlangıçta bu hedef tamamen tasarımda yoktu. 花さん'ın videosunda GPT bölümünde kullanılan referans ses kaydından elde edilen ses özelliği ve vits'teki referans ses kaydı farklı olabilir, bu şekilde ses hattı birleştirilebilir. Ancak benim uygulamamda her iki bölümde de birden fazla ses kaydı var
+8. Orijinalde mantıksız gördüğüm yerleri değiştirdim. Örneğin, hubert zaten sesin embedding'i olarak kullanılıyordu, token olarak kod kitabı vardı, neden ar_audio_embedding eklememiz gerekiyordu. Ayrıca orijinalde fonem olduğu için fonemlere bir embedding vermek gerekiyordu, çok sayıda ayrı embedding eğitim alıyordu ancak zaten bert ve hubert kullanıyorduk. Ayrıca, ayrı metin embedding ve ses embedding'i bağlamdaki ses ve metni dikkate almayacaktır, doğrudan GPT'ye girip attention ile ilişkileri bulmak daha iyidir
+
+Buraya kadar okuduysanız, anladığınızı gösterir, bu projeye katılmaya davetlisiniz!
+
+**QQ: 1715069210**
+
+**微信: JunityZ**
+
+#### Hızlı Not
+Bugün birçok makale okudum, VALLE2 makalesi de dahil, birçok yeni fikir edindim. Şu anda ar_audio_embedding ve ar_text_embedding'in tarihsel bir kalıntı olduğu çok önemli bir konu var.
+
+audioLM, hubert+kmeans kullanarak token elde eden ilk kişiydi, ancak kmean nicemleme eğitimi, tüm verileri öğrenmek zorunda kalmadan doğrudan hubert dağılımından öğreniyor. Bu yüzden bir sonradan embedding eklenir.
+
+Ancak vq kullanılırsa, vq zaten öğrenmeyi gerçekleştirmiştir, bu yüzden vq'ya bir embedding eklemeye gerek yoktur. Burada tarihsel bir sorun olarak sürekli embedding eklenmiştir. Etkisi büyük olmasa da, kaldırıldığında daha mantıklı olur.
+
+Ayrıca, audio lm hem semantic hem de akustik kullanır, bunları sırasıyla hubert ve soundstream aracılığıyla elde eder. Ancak GPT SoVITS de bu özelliğe sahiptir, meltransferencoder akustik elde ederken, hubert semantic elde eder. Bu oldukça tesadüf.
+
+VALLE serisi genellikle EnCodec kullanır, EnCodec doğrudan sesten token elde eder, bu yüzden tekrar bir embedding yapmak gerekir, çünkü baştan embedding çıkarmaz. Ancak hubert kullanmak çok mantıklı değil çünkü hubert'in çıktısı zaten embedding'dir.
+
+Tersine, hubert embedding kullanarak token elde ederiz, EnCodec ise token elde ettikten sonra embedding yapar.
+
+Bu nedenle, orijinal GPTSoVITS ve önceki referans alınan AUdio LM, EnCodec serisi TTS yöntemine dayandığını gibi görünse de, aslında bu ikisi farklıdır.
+
+#### YAPILACAKLAR
+Kuantizasyonu yeniden yaz, vector-quantize-pytorch'un Group Residual VQ'sunu doğrudan çağır

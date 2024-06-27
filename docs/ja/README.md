@@ -1,244 +1,86 @@
-<div align="center">
-
-<h1>GPT-SoVITS-WebUI</h1>
-パワフルな数発音声変換・音声合成 WebUI。<br><br>
-
-[![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Boss/GPT-SoVITS)
-
-<img src="https://counter.seku.su/cmoe?name=gptsovits&theme=r34" /><br>
-
-[![Open In Colab](https://img.shields.io/badge/Colab-F9AB00?style=for-the-badge&logo=googlecolab&color=525252)](https://colab.research.google.com/github/RVC-Boss/GPT-SoVITS/blob/main/colab_webui.ipynb)
-[![License](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models%20Repo-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/GPT-SoVITS/tree/main)
-[![Discord](https://img.shields.io/discord/1198701940511617164?color=%23738ADB&label=Discord&style=for-the-badge)](https://discord.gg/dnrgs5GHfG)
-
-[**English**](../../README.md) | [**中文简体**](../cn/README.md) | **日本語** | [**한국어**](../ko/README.md) | [**Türkçe**](../tr/README.md)
-
-</div>
-
----
-
-## 機能:
-
-1. **ゼロショット TTS:** 5 秒間のボーカルサンプルを入力すると、即座にテキストから音声に変換されます。
-
-2. **数ショット TTS:** わずか 1 分間のトレーニングデータでモデルを微調整し、音声の類似性とリアリズムを向上。
-
-3. **多言語サポート:** 現在、英語、日本語、中国語をサポートしています。
-
-4. **WebUI ツール:** 統合されたツールには、音声伴奏の分離、トレーニングセットの自動セグメンテーション、中国語 ASR、テキストラベリングが含まれ、初心者がトレーニングデータセットと GPT/SoVITS モデルを作成するのを支援します。
-
-**[デモ動画](https://www.bilibili.com/video/BV12g4y1m7Uw)をチェック！**
-
-未見の話者数ショット微調整デモ：
-
-https://github.com/RVC-Boss/GPT-SoVITS/assets/129054828/05bee1fa-bdd8-4d85-9350-80c060ab47fb
-
-**ユーザーマニュアル: [简体中文](https://www.yuque.com/baicaigongchang1145haoyuangong/ib3g1e) | [English](https://rentry.co/GPT-SoVITS-guide#/)**
-
-## インストール
-
-### テスト済みの環境
-
-- Python 3.9, PyTorch 2.0.1, CUDA 11
-- Python 3.10.13, PyTorch 2.1.2, CUDA 12.3
-- Python 3.9, PyTorch 2.2.2, macOS 14.4.1 (Apple silicon)
-- Python 3.9, PyTorch 2.2.2, CPUデバイス
-
-_注記: numba==0.56.4 は py<3.11 が必要です_
-
-### Windows
-
-Windows ユーザーの場合（win>=10 でテスト済み）、[0206fix3 パッケージ](https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/main/GPT-SoVITS-beta-fast-inference-branch.7z?download=true) または [0217fix2 パッケージ](https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/main/GPT-SoVITS-beta0217fix2.7z?download=true) をダウンロードして、解凍後に _go-webui.bat_ をダブルクリックするだけで GPT-SoVITS-WebUI を起動できます。
-
-_注：0206バージョンの推論速度は速いですが、0217の新バージョンの推論品質は優れています。必要に応じて選択してください。_
-
-### Linux
-
-```bash
-conda create -n GPTSoVits python=3.9
-conda activate GPTSoVits
-bash install.sh
-```
-
-### macOS
-
-**注：MacでGPUを使用して訓練されたモデルは、他のデバイスで訓練されたモデルと比較して著しく品質が低下するため、当面はCPUを使用して訓練します。**
-
-1. `xcode-select --install` を実行して、Xcodeコマンドラインツールをインストールします。
-2. `brew install ffmpeg` または `conda install ffmpeg` を実行して、FFmpegをインストールします。
-3. 上記の手順を完了した後、以下のコマンドを実行してこのプロジェクトをインストールします。
-
-```bash
-conda create -n GPTSoVits python=3.9
-conda activate GPTSoVits
-
-pip install -r requirements.txt
-```
-
-### 手動インストール
-
-#### 依存関係をインストールします
-
-```bash
-pip install -r requirementx.txt
-```
-
-#### FFmpegをインストールします。
-
-##### Conda ユーザー
-
-```bash
-conda install ffmpeg
-```
-
-##### Ubuntu/Debian ユーザー
-
-```bash
-sudo apt install ffmpeg
-sudo apt install libsox-dev
-conda install -c conda-forge 'ffmpeg<7'
-```
-
-##### Windows ユーザー
-
-[ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffmpeg.exe) と [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffprobe.exe) をダウンロードし、GPT-SoVITS のルートディレクトリに置きます。
-
-### Docker の使用
-
-#### docker-compose.yaml の設定
-
-0. イメージのタグについて：コードベースの更新が速く、イメージのパッケージングとテストが遅いため、[Docker Hub](https://hub.docker.com/r/breakstring/gpt-sovits) で現在パッケージされている最新のイメージをご覧になり、ご自身の状況に応じて選択するか、またはご自身のニーズに応じて Dockerfile を使用してローカルで構築してください。
-1. 環境変数：
-
-   - `is_half`：半精度／倍精度の制御。"SSL 抽出"ステップ中に`4-cnhubert/5-wav32k`ディレクトリ内の内容が正しく生成されない場合、通常これが原因です。実際の状況に応じて True または False に調整してください。
-
-2. ボリューム設定：コンテナ内のアプリケーションのルートディレクトリは`/workspace`に設定されます。デフォルトの`docker-compose.yaml`には、アップロード／ダウンロードの内容の実例がいくつか記載されています。
-3. `shm_size`：Windows の Docker Desktop のデフォルトの利用可能メモリが小さすぎるため、異常な動作を引き起こす可能性があります。状況に応じて適宜設定してください。
-4. `deploy`セクションの GPU に関連する内容は、システムと実際の状況に応じて慎重に設定してください。
-
-#### docker compose で実行する
-
-```markdown
-docker compose -f "docker-compose.yaml" up -d
-```
-
-#### docker コマンドで実行する
-
-上記と同様に、実際の状況に基づいて対応するパラメータを変更し、次のコマンドを実行します：
-
-```markdown
-docker run --rm -it --gpus=all --env=is_half=False --volume=G:\GPT-SoVITS-DockerTest\output:/workspace/output --volume=G:\GPT-SoVITS-DockerTest\logs:/workspace/logs --volume=G:\GPT-SoVITS-DockerTest\SoVITS_weights:/workspace/SoVITS_weights --workdir=/workspace -p 9880:9880 -p 9871:9871 -p 9872:9872 -p 9873:9873 -p 9874:9874 --shm-size="16G" -d breakstring/gpt-sovits:xxxxx
-```
-
-## 事前訓練済みモデル
-
-[GPT-SoVITS Models](https://huggingface.co/lj1995/GPT-SoVITS) から事前訓練済みモデルをダウンロードし、`GPT_SoVITSpretrained_models` に置きます。
-
-中国語 ASR（追加）については、[Damo ASR Model](https://modelscope.cn/models/damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch/files)、[Damo VAD Model](https://modelscope.cn/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/files)、[Damo Punc Model](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/files) からモデルをダウンロードし、`tools/asr/models` に置いてください。
-
-UVR5 (Vocals/Accompaniment Separation & Reverberation Removal, additionally) の場合は、[UVR5 Weights](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/uvr5_weights) からモデルをダウンロードして `tools/uvr5/uvr5_weights` に置きます。
-
-## データセット形式
-
-TTS アノテーション .list ファイル形式:
-
-```
-vocal_path|speaker_name|language|text
-```
-
-言語辞書:
-
-- 'zh': 中国語
-- 'ja': 日本語
-- 'en': 英語
-
-例:
-
-```
-D:\GPT-SoVITS\xxx/xxx.wav|xxx|en|I like playing Genshin.
-```
-
-## Todo リスト
-
-- [ ] **優先度 高:**
-
-  - [x] 日本語と英語でのローカライズ。
-  - [ ] ユーザーガイド。
-  - [x] 日本語データセットと英語データセットのファインチューニングトレーニング。
-
-- [ ] **機能:**
-  - [ ] ゼロショット音声変換（5 秒）／数ショット音声変換（1 分）。
-  - [ ] TTS スピーキングスピードコントロール。
-  - [ ] TTS の感情コントロールの強化。
-  - [ ] SoVITS トークン入力を語彙の確率分布に変更する実験。
-  - [ ] 英語と日本語のテキストフロントエンドを改善。
-  - [ ] 小型と大型の TTS モデルを開発する。
-  - [x] Colab のスクリプト。
-  - [ ] トレーニングデータセットを拡張する（2k→10k）。
-  - [ ] より良い sovits ベースモデル（音質向上）
-  - [ ] モデルミックス
-
-## (追加の) コマンドラインから実行する方法
-コマンド ラインを使用して UVR5 の WebUI を開きます
-```
-python tools/uvr5/webui.py "<infer_device>" <is_half> <webui_port_uvr5>
-```
-ブラウザを開けない場合は、以下の形式に従って UVR 処理を行ってください。これはオーディオ処理に mdxnet を使用しています。
-```
-python mdxnet.py --model --input_root --output_vocal --output_ins --agg_level --format --device --is_half_precision 
-```
-コマンド ラインを使用してデータセットのオーディオ セグメンテーションを行う方法は次のとおりです。
-```
-python audio_slicer.py \
-    --input_path "<path_to_original_audio_file_or_directory>" \
-    --output_root "<directory_where_subdivided_audio_clips_will_be_saved>" \
-    --threshold <volume_threshold> \
-    --min_length <minimum_duration_of_each_subclip> \
-    --min_interval <shortest_time_gap_between_adjacent_subclips> 
-    --hop_size <step_size_for_computing_volume_curve>
-```
-コマンドラインを使用してデータセット ASR 処理を行う方法です (中国語のみ)
-```
-python tools/asr/funasr_asr.py -i <input> -o <output>
-```
-ASR処理はFaster_Whisperを通じて実行されます(中国語を除くASRマーキング)
-
-(進行状況バーは表示されません。GPU のパフォーマンスにより時間遅延が発生する可能性があります)
-```
-python ./tools/asr/fasterwhisper_asr.py -i <input> -o <output> -l <language>
-```
-カスタムリストの保存パスが有効になっています
-
-## クレジット
-
-特に以下のプロジェクトと貢献者に感謝します：
-
-### 理論研究
-- [ar-vits](https://github.com/innnky/ar-vits)
-- [SoundStorm](https://github.com/yangdongchao/SoundStorm/tree/master/soundstorm/s1/AR)
-- [vits](https://github.com/jaywalnut310/vits)
-- [TransferTTS](https://github.com/hcy71o/TransferTTS/blob/master/models.py#L556)
-- [contentvec](https://github.com/auspicious3000/contentvec/)
-- [hifi-gan](https://github.com/jik876/hifi-gan)
-- [fish-speech](https://github.com/fishaudio/fish-speech/blob/main/tools/llama/generate.py#L41)
-### 事前学習モデル
-- [Chinese Speech Pretrain](https://github.com/TencentGameMate/chinese_speech_pretrain)
-- [Chinese-Roberta-WWM-Ext-Large](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large)
-### 推論用テキストフロントエンド
-- [paddlespeech zh_normalization](https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization)
-- [LangSegment](https://github.com/juntaosun/LangSegment)
-### WebUI ツール
-- [ultimatevocalremovergui](https://github.com/Anjok07/ultimatevocalremovergui)
-- [audio-slicer](https://github.com/openvpi/audio-slicer)
-- [SubFix](https://github.com/cronrpc/SubFix)
-- [FFmpeg](https://github.com/FFmpeg/FFmpeg)
-- [gradio](https://github.com/gradio-app/gradio)
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
-- [FunASR](https://github.com/alibaba-damo-academy/FunASR)
-
-## すべてのコントリビューターに感謝します
-
-<a href="https://github.com/RVC-Boss/GPT-SoVITS/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Boss/GPT-SoVITS" />
-</a>
+# GPT-SoVITS2
+
+この名前はGPT-SoVITSの作者[花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0)の許可を得ています。
+### このプロジェクトはまだ開発中であり、[GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)に基づいて改良されました。主な改善点は以下の通りです：
+
+1. **多言語のネイティブサポート**：中国語、日本語、英語に限らず、世界中のどんな言語にも対応。
+2. **言語を指定する必要がない**：いつでも多言語対応、自由に多言語を混ぜて話せます。
+3. **多言語テキスト感情抽出**：言語の感情分析がより正確になり、話し方に感情が豊かになります。
+4. **Zero Shotの向上**：今ではモデルの微調整を推奨せず、数秒のターゲット音声だけで直接ゼロショットします。
+5. **参照音声の融合**：複数の参照音声をアップロードでき、得られる音声は複数の音声の融合結果になります。
+6. **より高速な推論**：positional embeddingをRoPEに変更し、次のトークンを推論するたびにシーケンス全体のembeddingを再計算する必要がなくなります。
+
+### **データと協力募集**：現在、データを募集しています。QQ 1715069210、データが合格した場合はプロジェクトでクレジットされます。
+
+#### 現在、ソースコードの変更方針を整理しています。# ! を検索すると注釈が見つかります。興味がある方は上記のQQで交流を希望します。
+
+### 変更リスト
+
+#### コードブックの変更
+シングルコードブック-> 2コードブック/4コードブック
+#### GPTの変更
+qwen2-0.3bに変更
+#### 音声エンコードの変更
+cnhubert-> ~~w2v-bert-2.0(暫定、これはmetaによる現在のトレーニングセットで最も壮大な4.6m時間多言語事前トレーニング。結果が外国人のように聞こえたらcnhubert-largeに変更)~~/cnhubert-large/mHubert-147
+w2v-bert-2.0のトレーニングが少し難しいことが分かり、mHubert-147のトレーニングが比較的簡単で、サイズが四倍小さく、fp16では直接クラッシュするため、fp32のみ使用可能。また、mHubertは既に十分に大きい（600MB）。
+#### テキストエンコードの変更
+音素および対応するembeddingを削除
+cn-roberta ->  BGE-m3
+#### 位置エンコードの変更
+テキストと音声エンコードをそれぞれsinusoidal->全体をRoPE embeddingに変更。
+#### xy結合embeddingの変更（実験的）
+元の
+x1+x2+y1->y2
+を
+x1+y1+x2->y2
+に変更し、シーケンス全体で1つのRoPE embeddingを共有
+理論的には、これにより複数のターゲット音声をより自然に融合させることが可能
+例えば
+x1+y1+x2+y2+x3+y3+x4+y4+x5->y5
+の方が
+x1+x2+x3+x4+x5+y1+y2+y3+y4->y5
+より自然に感じられる。厳密に証明することはできないが。
+#### 次元の変更
+MLP(768, 512) -> ~~MLPなしで直接1024次元。w2v-bert-2.0とbge-m3が共に1024次元であるため、完璧な組み合わせ~~ MLP(1024, 768)
+#### トレーニング方法の変更
+純粋な自己回帰->自己回帰+同一スピーカーのゼロショットトレーニングサンプルの回帰
+#### vitsの変更
+次元を拡大する方法を考える。(256->512)
+#### フォーマット
+統一~~半精度~~単精度（テスト結果、半精度ではクラッシュ）、hubert 16000サンプル vits 32000サンプル、全ての音声の音量を統一
+#### まとめ
+全体的に見て、変更点は基本的に
+1. より先進的な事前トレーニングモデルを使用
+2. より先進的なモデルが大きくなるため、元の次元も拡大
+3. ゼロショットを重視しているため、トレーニング方法にゼロショットトレーニングを追加
+4. 元のコードは中国語だけにbertを使っていたが、BGE m3のような多言語embeddingに変更することで、全言語のシームレスな抽出が自然に可能
+5. 元々シングルコードブックで、サイズが1024しかなかったため、hubert特徴抽出のガイド能力が不十分。ダブルコードブックに変更することで情報量が1024^2 = 1048576になり、4コードブックではさらに壮大だが、データがそれほど多くないため、一歩一歩試していく
+6. 元々の遅さの原因の一つは、GPTが毎回シーケンス全体のembeddingとpositional embeddingを再計算する必要があったこと。しかしRoPEに変更することでこの欠点がなくなる
+7. 元々声の融合に関心がなかったが、後に別のブランチを作成し、元のGPT-SoVITSに声の融合を実現した。しかし、最初の設計にはこの目標が全く含まれていなかった。花さんのビデオでは、GPT部分で使用される参照音声からの音声特徴とvitsでの参照音声が異なることが声の融合を可能にすると述べていた。しかし、私の実装では、両方の部分に複数の音声が含まれている
+8. 私が合理的でないと感じた部分を変更した。例えば、既にhubertを音声のembeddingとして使用しているのに、なぜ再びar_audio_embeddingが必要なのか。そして、元々音素があったため、音素に対応するembeddingが必要で、多くの個別のembeddingが訓練されていたが、既にbertとhubertを使用していた。そして、個別のテキストembeddingと音声embeddingは文脈の音声とテキストを考慮していないため、直接GPTに入力しattentionで関係を見つける方が良い
+
+ここまで読んでいただけたなら、理解していただけたと思います。このプロジェクトに参加することを歓迎します！
+
+**QQ: 1715069210**
+
+**微信: JunityZ**
+
+#### クイックノート
+今日は多くの論文を読んでおり、VALLE2の論文からも新たなアイデアを得ました。重要な点は、現在のar_audio_embeddingとar_text_embeddingは歴史的な遺物であるということです。
+
+audioLMが最初にhubert+kmeansを使用してトークンを取得しましたが、kmeanの量子化学習は全体のデータを学習する必要がなく、直接hubertの分布から学習するため、後続のembeddingが追加されました。
+
+しかし、vqを使用すると、vq自体が学習を行っているため、vqに追加のembeddingは不要です。ここでの歴史的な問題はembeddingが常に追加されていることで、影響は大きくないが、削除するとより合理的です。
+
+また、audio lmはsemanticとacousticの両方を使用しており、hubertとsoundstreamを通じてそれぞれ取得します。しかし、GPT SoVITSもこれを持っており、meltransferencoderはacousticを、hubertはsemanticを取得しますので非常に巧妙です。
+
+VALLE系は一般的にEnCodecを使用しており、EnCodecは音声から直接トークンを取得するため、embeddingが再度必要です。hubertはその出力がembeddingであるため、不要です。
+
+反対に、hubert embeddingを使用してトークンを取得し、EnCodecはトークンを取得した
+
+後、embeddingを行います。
+
+したがって、元のGPTSoVITSと以前の参考にしたAUdio LMはEnCodecベースのTTSに基づいた手法を参考にしているようですが、実際にはこれらは異なります。
+
+#### TODO
+量子化を再構築し、vector-quantize-pytorchのGroup Residual VQを直接使用
