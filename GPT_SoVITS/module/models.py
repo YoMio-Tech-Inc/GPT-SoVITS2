@@ -18,160 +18,6 @@ from torch.cuda.amp import autocast
 import contextlib
 
 
-class StochasticDurationPredictor(nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        filter_channels,
-        kernel_size,
-        p_dropout,
-        n_flows=4,
-        gin_channels=0,
-    ):
-        super().__init__()
-        filter_channels = in_channels  # it needs to be removed from future version.
-        self.in_channels = in_channels
-        self.filter_channels = filter_channels
-        self.kernel_size = kernel_size
-        self.p_dropout = p_dropout
-        self.n_flows = n_flows
-        self.gin_channels = gin_channels
-
-        self.log_flow = modules.Log()
-        self.flows = nn.ModuleList()
-        self.flows.append(modules.ElementwiseAffine(2))
-        for i in range(n_flows):
-            self.flows.append(
-                modules.ConvFlow(2, filter_channels, kernel_size, n_layers=3)
-            )
-            self.flows.append(modules.Flip())
-
-        self.post_pre = nn.Conv1d(1, filter_channels, 1)
-        self.post_proj = nn.Conv1d(filter_channels, filter_channels, 1)
-        self.post_convs = modules.DDSConv(
-            filter_channels, kernel_size, n_layers=3, p_dropout=p_dropout
-        )
-        self.post_flows = nn.ModuleList()
-        self.post_flows.append(modules.ElementwiseAffine(2))
-        for i in range(4):
-            self.post_flows.append(
-                modules.ConvFlow(2, filter_channels, kernel_size, n_layers=3)
-            )
-            self.post_flows.append(modules.Flip())
-
-        self.pre = nn.Conv1d(in_channels, filter_channels, 1)
-        self.proj = nn.Conv1d(filter_channels, filter_channels, 1)
-        self.convs = modules.DDSConv(
-            filter_channels, kernel_size, n_layers=3, p_dropout=p_dropout
-        )
-        if gin_channels != 0:
-            self.cond = nn.Conv1d(gin_channels, filter_channels, 1)
-
-    def forward(self, x, x_mask, w=None, g=None, reverse=False, noise_scale=1.0):
-        x = torch.detach(x)
-        x = self.pre(x)
-        if g is not None:
-            g = torch.detach(g)
-            x = x + self.cond(g)
-        x = self.convs(x, x_mask)
-        x = self.proj(x) * x_mask
-
-        if not reverse:
-            flows = self.flows
-            assert w is not None
-
-            logdet_tot_q = 0
-            h_w = self.post_pre(w)
-            h_w = self.post_convs(h_w, x_mask)
-            h_w = self.post_proj(h_w) * x_mask
-            e_q = (
-                torch.randn(w.size(0), 2, w.size(2)).to(device=x.device, dtype=x.dtype)
-                * x_mask
-            )
-            z_q = e_q
-            for flow in self.post_flows:
-                z_q, logdet_q = flow(z_q, x_mask, g=(x + h_w))
-                logdet_tot_q += logdet_q
-            z_u, z1 = torch.split(z_q, [1, 1], 1)
-            u = torch.sigmoid(z_u) * x_mask
-            z0 = (w - u) * x_mask
-            logdet_tot_q += torch.sum(
-                (F.logsigmoid(z_u) + F.logsigmoid(-z_u)) * x_mask, [1, 2]
-            )
-            logq = (
-                torch.sum(-0.5 * (math.log(2 * math.pi) + (e_q**2)) * x_mask, [1, 2])
-                - logdet_tot_q
-            )
-
-            logdet_tot = 0
-            z0, logdet = self.log_flow(z0, x_mask)
-            logdet_tot += logdet
-            z = torch.cat([z0, z1], 1)
-            for flow in flows:
-                z, logdet = flow(z, x_mask, g=x, reverse=reverse)
-                logdet_tot = logdet_tot + logdet
-            nll = (
-                torch.sum(0.5 * (math.log(2 * math.pi) + (z**2)) * x_mask, [1, 2])
-                - logdet_tot
-            )
-            return nll + logq  # [b]
-        else:
-            flows = list(reversed(self.flows))
-            flows = flows[:-2] + [flows[-1]]  # remove a useless vflow
-            z = (
-                torch.randn(x.size(0), 2, x.size(2)).to(device=x.device, dtype=x.dtype)
-                * noise_scale
-            )
-            for flow in flows:
-                z = flow(z, x_mask, g=x, reverse=reverse)
-            z0, z1 = torch.split(z, [1, 1], 1)
-            logw = z0
-            return logw
-
-
-class DurationPredictor(nn.Module):
-    def __init__(
-        self, in_channels, filter_channels, kernel_size, p_dropout, gin_channels=0
-    ):
-        super().__init__()
-
-        self.in_channels = in_channels
-        self.filter_channels = filter_channels
-        self.kernel_size = kernel_size
-        self.p_dropout = p_dropout
-        self.gin_channels = gin_channels
-
-        self.drop = nn.Dropout(p_dropout)
-        self.conv_1 = nn.Conv1d(
-            in_channels, filter_channels, kernel_size, padding=kernel_size // 2
-        )
-        self.norm_1 = modules.LayerNorm(filter_channels)
-        self.conv_2 = nn.Conv1d(
-            filter_channels, filter_channels, kernel_size, padding=kernel_size // 2
-        )
-        self.norm_2 = modules.LayerNorm(filter_channels)
-        self.proj = nn.Conv1d(filter_channels, 1, 1)
-
-        if gin_channels != 0:
-            self.cond = nn.Conv1d(gin_channels, in_channels, 1)
-
-    def forward(self, x, x_mask, g=None):
-        x = torch.detach(x)
-        if g is not None:
-            g = torch.detach(g)
-            x = x + self.cond(g)
-        x = self.conv_1(x * x_mask)
-        x = torch.relu(x)
-        x = self.norm_1(x)
-        x = self.drop(x)
-        x = self.conv_2(x * x_mask)
-        x = torch.relu(x)
-        x = self.norm_2(x)
-        x = self.drop(x)
-        x = self.proj(x * x_mask)
-        return x * x_mask
-
-
 class TextEncoder(nn.Module):
     def __init__(
         self,
@@ -208,7 +54,7 @@ class TextEncoder(nn.Module):
         self.encoder_text = attentions.Encoder(
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
-        self.text_embedding = nn.Embedding(len(symbols), hidden_channels)
+        self.text_embedding = nn.Embedding(len(symbols), hidden_channels) # ! 去掉，换成BGE M3 embedding
 
         self.mrte = MRTE()
 
@@ -267,7 +113,68 @@ class TextEncoder(nn.Module):
         return y, m, logs, y_mask, quantized
 
 
-class ResidualCouplingBlock(nn.Module):
+
+class FFTransformerCouplingLayer(nn.Module):  # vits2
+    def __init__(
+        self,
+        channels,
+        hidden_channels,
+        kernel_size,
+        n_layers,
+        n_heads,
+        p_dropout=0,
+        filter_channels=768,
+        mean_only=False,
+        gin_channels=0,
+    ):
+        assert channels % 2 == 0, "channels should be divisible by 2"
+        super().__init__()
+        self.channels = channels
+        self.hidden_channels = hidden_channels
+        self.kernel_size = kernel_size
+        self.n_layers = n_layers
+        self.half_channels = channels // 2
+        self.mean_only = mean_only
+
+        self.pre = nn.Conv1d(self.half_channels, hidden_channels, 1)
+        self.enc = attentions.FFT(
+            hidden_channels,
+            filter_channels,
+            n_heads,
+            n_layers,
+            kernel_size,
+            p_dropout,
+            isflow=True,
+            gin_channels=gin_channels,
+        )
+        self.post = nn.Conv1d(hidden_channels, self.half_channels * (2 - mean_only), 1)
+        self.post.weight.data.zero_()
+        self.post.bias.data.zero_()
+
+    def forward(self, x, x_mask, g=None, reverse=False):
+        x0, x1 = torch.split(x, [self.half_channels] * 2, 1)
+        h = self.pre(x0) * x_mask
+        h_ = self.enc(h, x_mask, g=g)
+        h = h_ + h
+        stats = self.post(h) * x_mask
+        if not self.mean_only:
+            m, logs = torch.split(stats, [self.half_channels] * 2, 1)
+        else:
+            m = stats
+            logs = torch.zeros_like(m)
+
+        if not reverse:
+            x1 = m + x1 * torch.exp(logs) * x_mask
+            x = torch.cat([x0, x1], 1)
+            logdet = torch.sum(logs, [1, 2])
+            return x, logdet
+        else:
+            x1 = (x1 - m) * torch.exp(-logs) * x_mask
+            x = torch.cat([x0, x1], 1)
+            return x
+
+
+class ResidualCouplingTransformersBlock(nn.Module):  # vits2
     def __init__(
         self,
         channels,
@@ -288,9 +195,10 @@ class ResidualCouplingBlock(nn.Module):
         self.gin_channels = gin_channels
 
         self.flows = nn.ModuleList()
+
         for i in range(n_flows):
             self.flows.append(
-                modules.ResidualCouplingLayer(
+                FFTransformerCouplingLayer(
                     channels,
                     hidden_channels,
                     kernel_size,
@@ -343,7 +251,7 @@ class PosteriorEncoder(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
     def forward(self, x, x_lengths, g=None):
-        if g != None:
+        if not g:
             g = g.detach()
         x_mask = torch.unsqueeze(commons.sequence_mask(x_lengths, x.size(2)), 1).to(
             x.dtype
@@ -874,7 +782,7 @@ class SynthesizerTrn(nn.Module):
             16,
             gin_channels=gin_channels,
         )
-        self.flow = ResidualCouplingBlock(
+        self.flow = ResidualCouplingTransformersBlock( # ! USE transformer block from VITS2
             inter_channels, hidden_channels, 5, 1, 4, gin_channels=gin_channels
         )
 

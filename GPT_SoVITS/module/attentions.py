@@ -7,7 +7,7 @@ from module import commons
 from module.modules import LayerNorm
 
 
-class Encoder(nn.Module):
+class Encoder(nn.Module): # ! 
     def __init__(
         self,
         hidden_channels,
@@ -174,7 +174,7 @@ class Decoder(nn.Module):
         return x
 
 
-class MultiHeadAttention(nn.Module):
+class MultiHeadAttention(nn.Module): # ! Multihead attention是否可以优化一下
     def __init__(
         self,
         channels,

@@ -194,7 +194,7 @@ class Text2SemanticDecoder(nn.Module):
         x: bert_feature
         y: semantic_ids
         """
-        x = x.transpose(1, 2) # 确保维度正确
+        x = x.transpose(1, 2)  # 确保维度正确
         x_mask = make_pad_mask(x_lens)
 
         y_mask = make_pad_mask(y_lens)
@@ -208,7 +208,7 @@ class Text2SemanticDecoder(nn.Module):
         y_len = y_lens.max()
         # y_emb = self.ar_audio_embedding(y)
         # y_pos = self.ar_audio_position(y_emb)
-        y_pos = y # ! 这里等数据处理的适合
+        y_pos = y  # ! 这里等数据处理的适合
 
         xy_padding_mask = torch.concat([x_mask, y_mask], dim=1)
         ar_xy_padding_mask = xy_padding_mask
@@ -249,7 +249,6 @@ class Text2SemanticDecoder(nn.Module):
         loss = F.cross_entropy(logits, targets, reduction="sum")
         acc = self.ar_accuracy_metric(logits.detach(), targets).item()
         return loss, acc
-
 
     # ! GPT-SOVITS2更改
     # ! x维度和prompts做embedding后统一，GPTSOVITS中使用的方法是训练两个embedding，维度都是512，用一个MLP将bert的1024变成512.并且音素的embedding维度也是512
@@ -320,7 +319,7 @@ class Text2SemanticDecoder(nn.Module):
             xy_dec, _ = self.h(
                 (xy_pos, None),
                 mask=xy_attn_mask,
-            )
+            ) 
             logits = self.ar_predict_layer(xy_dec[:, -1])
             samples = topk_sampling(
                 logits, top_k=top_k, top_p=1.0, temperature=temperature
