@@ -45,7 +45,7 @@ MLP (768, 512) -> ~~Sem MLP, diretamente 1024 dimensões. w2v-bert-2.0 e bge-m3 
 #### Mudanças no método de treinamento
 De autoregressivo puro -> autoregressivo + zero shot com amostras do mesmo locutor.
 #### Mudanças no vits
-Ampliar dimensões se possível (256 -> 512).
+Ampliar dimensões se possível (256 -> 512). VITS -> VITS2 (principalmente adicionando um transformer block ao modelo de fluxo)
 #### Formato
 Unificar ~~precisão média~~ precisão simples (a precisão média falhava), hubert a 16000 amostras, vits a 32000 amostras, unificar a sonoridade de todos os áudios.
 #### Resumo
