@@ -45,7 +45,7 @@ MLP(768, 512) -> ~~MLP olmadan doğrudan 1024 boyut. w2v-bert-2.0 ve bge-m3 her 
 #### Eğitim yönteminde değişiklikler
 Saf oto-regresif -> oto-regresif + aynı hoparlörde zero shot eğitim örneği regresyonu
 #### vits değişiklikleri
-Boyutu genişletmenin bir yolunu bulmak (256 -> 512)
+Boyutu genişletmenin bir yolunu bulmak (256 -> 512) VITS -> VITS2 (özellikle akış modeline transformer block ekleyerek)
 #### Format
 Birleştirilmiş ~~yarım hassasiyet~~ tek hassasiyet (gerçek testten sonra yarım hassasiyet çöküyor), hubert 16000 örnekleme vits 32000 örnekleme tüm seslerde ses yüksekliği birleştirme
 #### Özet
