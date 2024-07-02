@@ -45,7 +45,7 @@ MLP(768, 512) -> ~~No MLP directly 1024 dimensions. Since both w2v-bert-2.0 and 
 #### Training method changes
 Pure autoregressive -> autoregressive + zero shot training sample regression under the same speaker
 #### vits changes
-Possibly find a way to increase the dimensions. (256 -> 512)
+Possibly find a way to increase the dimensions. (256 -> 512) VITS -> VITS2 (mainly adding transformer block to the flow model).
 #### Format
 Unified ~~half precision~~ single precision (real tests found that half precision crashes), hubert 16000 sampling, vits 32000 sampling, loudness normalization for all audio.
 #### Summary
