@@ -7,7 +7,7 @@ from module import commons
 from module.modules import LayerNorm
 
 
-class Encoder(nn.Module): # ! 
+class Encoder(nn.Module):  # backward compatible vits2 encoder
     def __init__(
         self,
         hidden_channels,
@@ -17,8 +17,7 @@ class Encoder(nn.Module): # !
         kernel_size=1,
         p_dropout=0.0,
         window_size=4,
-        isflow=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.hidden_channels = hidden_channels
@@ -34,6 +33,20 @@ class Encoder(nn.Module): # !
         self.norm_layers_1 = nn.ModuleList()
         self.ffn_layers = nn.ModuleList()
         self.norm_layers_2 = nn.ModuleList()
+        # if kwargs has spk_emb_dim, then add a linear layer to project spk_emb_dim to hidden_channels
+        self.cond_layer_idx = self.n_layers
+        if "gin_channels" in kwargs:
+            self.gin_channels = kwargs["gin_channels"]
+            if self.gin_channels != 0:
+                self.spk_emb_linear = nn.Linear(self.gin_channels, self.hidden_channels)
+                # vits2 says 3rd block, so idx is 2 by default
+                self.cond_layer_idx = (
+                    kwargs["cond_layer_idx"] if "cond_layer_idx" in kwargs else 2
+                )
+                assert (
+                    self.cond_layer_idx < self.n_layers
+                ), "cond_layer_idx should be less than n_layers"
+
         for i in range(self.n_layers):
             self.attn_layers.append(
                 MultiHeadAttention(
@@ -55,28 +68,16 @@ class Encoder(nn.Module): # !
                 )
             )
             self.norm_layers_2.append(LayerNorm(hidden_channels))
-        if isflow:
-            cond_layer = torch.nn.Conv1d(
-                kwargs["gin_channels"], 2 * hidden_channels * n_layers, 1
-            )
-            self.cond_pre = torch.nn.Conv1d(hidden_channels, 2 * hidden_channels, 1)
-            self.cond_layer = weight_norm_modules(cond_layer, name="weight")
-            self.gin_channels = kwargs["gin_channels"]
 
     def forward(self, x, x_mask, g=None):
         attn_mask = x_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
         x = x * x_mask
-        if g is not None:
-            g = self.cond_layer(g)
-
         for i in range(self.n_layers):
-            if g is not None:
-                x = self.cond_pre(x)
-                cond_offset = i * 2 * self.hidden_channels
-                g_l = g[:, cond_offset : cond_offset + 2 * self.hidden_channels, :]
-                x = commons.fused_add_tanh_sigmoid_multiply(
-                    x, g_l, torch.IntTensor([self.hidden_channels])
-                )
+            if i == self.n_layers - 1 and g is not None:
+                g = self.spk_emb_linear(g.transpose(1, 2))
+                g = g.transpose(1, 2)
+                x = x + g
+                x = x * x_mask
             y = self.attn_layers[i](x, x, attn_mask)
             y = self.drop(y)
             x = self.norm_layers_1[i](x + y)

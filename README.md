@@ -50,7 +50,7 @@ MLP(768, 512) -> ~~无MLP直接1024维度。因为w2v-bert-2.0和bge-m3都是102
 可能想办法把维度扩大.(256->512)
 VITS->VITS2(主要是流模型添加transformer block)
 #### 格式
-统一~~半精度~~单精度(实测之后发现半精度会炸), hubert 16000采样 vits 32000采样 对所有音频做响度统一
+统一~~半精度~~ ~~单精度(实测之后发现半精度会炸)~~ 半精度修复了，用回bf16(已经给vector-quantize-pytorch交了[PR](https://github.com/lucidrains/vector-quantize-pytorch/pull/144)),根据vall-e, 可以GPT bf16，VITS+hubert+量化 fp32，或者别的组合，到时候**实验**。 hubert 16000采样 vits 32000采样 对所有音频做响度统一
 #### 总结
 其实总体上来说,改动基本都是
 1. 用上了更先进的预训练模型
