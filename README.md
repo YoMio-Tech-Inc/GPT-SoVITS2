@@ -16,6 +16,8 @@
 
 #### 目前在整理改动思路于源代码中，搜索# ! 即可找到注释。如果感兴趣希望添加以上QQ交流。
 
+### VITS部分(GPT_SoVITS/module/models)已经完全改好了，欢迎大家捉虫。现在做的我感觉想直接去做一个Style Transfer VITS2了，因为怎么调这个qwen2 0.3b都好慢。做完这个再开一个吧。
+
 ### 改动列表
 
 #### 码本的变动
@@ -49,6 +51,9 @@ MLP(768, 512) -> ~~无MLP直接1024维度。因为w2v-bert-2.0和bge-m3都是102
 #### vits改动
 可能想办法把维度扩大.(256->512)
 VITS->VITS2(主要是流模型添加transformer block)
+量化->GroupResidualFSQ
+text embedding(len(symbol)) -> text embedding(250000)[BGE m3 tokenizer]
+
 #### 格式
 统一~~半精度~~ ~~单精度(实测之后发现半精度会炸)~~ 半精度修复了，用回bf16(已经给vector-quantize-pytorch交了[PR](https://github.com/lucidrains/vector-quantize-pytorch/pull/144)),根据vall-e, 可以GPT bf16，VITS+hubert+量化 fp32，或者别的组合，到时候**实验**。 hubert 16000采样 vits 32000采样 对所有音频做响度统一
 #### 总结
@@ -68,6 +73,10 @@ VITS->VITS2(主要是流模型添加transformer block)
 
 **微信: JunityZ**
 
+### 讨论
+是否一定需要BGE-m3呢？直接用BGE-m3的tokenizer，然后自己训练一个text-embedding不行吗？或者融合他们，自己训练一个embedding再加上BGE-m3的embedding。
+自回归模型深度很重要，但是深度不能被显卡的并行能力所利用，batch size = 1和 batch size = 10推理一次的速度是一样的。但实际上推理一句话只能batch size = 1
+如何加速呢？
 #### Quick Note
 今天看了很多论文包括VALLE2的论文又有很多新的想法.有一个很重要的事情就是目前这个ar_audio_embedding和ar_text_embedding其实是一个历史遗留问题了。
 
