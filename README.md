@@ -1,6 +1,6 @@
 # GPT-SoVITS2
 
-[**English**](./docs/en/README.md) | [**日本語**](./docs/ja/README.md) | [**한국어**](./docs/ko/README.md) | [**Türkçe**](./docs/tr/README.md) | [**Español**](./docs/es/README.md) | [**Português**](./docs/pt/README.md)
+[**English**](./docs/en/README.md) | [**日本語**](./docs/ja/README.md) | [**한국어**](./docs/ko/README.md) | [**Türkçe**](./docs/tr/README.md) | [**Español**](./docs/es/README.md) | [**Português**](./docs/pt/README.md) | [**Polski**](./docs/pl/README.md) | [**Русский**](./docs/ru/README.md) | [**Українська**](./docs/uk/README.md) | [**Čeština**](./docs/cs/README.md) | [**Slovenčina**](./docs/sk/README.md) | [**Slovenščina**](./docs/sl/README.md) | [**Српски**](./docs/sr/README.md)
 
 此名字已获GPT-SoVITS作者[花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0)的许可。
 ### 此项目还在开发当中，基于 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 改良而来，主要改进点如下：
