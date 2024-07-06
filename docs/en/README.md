@@ -38,15 +38,23 @@ This name has been approved by the author of GPT-SoVITS, [花儿不哭](https://
 
 ### List of Changes
 
-#### Codebook changes
-Single codebook -> 2 codebooks/4 codebooks
-#### GPT changes
-Replaced with qwen2-0.3b
-#### Audio encoding changes
-cnhubert -> ~~w2v-bert-2.0 (tentative, this is the most exaggerated 4.6m-hour multilingual pre-training done by meta. If the result sounds like a foreigner speaking Chinese, it will be replaced with cnhubert-large)~~/cnhubert-large/mHubert-147
-I found that training w2v-bert-2.0 is a bit difficult, training mHubert-147 is relatively easier, the size difference is fourfold, and in real tests, fp16 directly crashes, so only fp32 can be used. Also, mHubert is already large enough (600MB).
+
+#### Changes to the Codebook
+~~Single codebook -> 2-codebook/4-codebook~~
+
+The vocab size of $S^3$ is 4096 single codebook
+#### GPT Changes
+Switched to qwen2-0.3b
+#### Changes to Audio Encoding
+~~cnhubert -> ~~w2v-bert-2.0 (tentative, this is the most extensive multilingual pre-training set by Meta with 4.6 million hours. If the result sounds like a foreigner speaking Chinese, we'll switch to cnhubert-large)~~/cnhubert-large/mHubert-147~~
+~~I found that training w2v-bert-2.0 is a bit difficult, while training mHubert-147 is relatively easier. The size difference is fourfold, and fp16 directly crashes during tests, so only fp32 can be used. Moreover, mHubert is already large enough (600MB)~~
+
+Using the $S^3$ Encoder from CosyVoice with an external embedding layer
 #### Text encoding changes
 Remove phonemes and corresponding embeddings
+
+Phoneme -> BPE Tokenization
+
 cn-roberta -> BGE-m3
 #### Positional encoding changes
 Text and speech encoding each do sinusoidal -> globally do RoPE embedding.
