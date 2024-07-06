@@ -2,6 +2,27 @@
 
 Bu isim, GPT-SoVITS'in yazarı [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0) tarafından izin alınmıştır.
 ### Bu proje hala geliştirme aşamasındadır ve [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) temel alınarak iyileştirilmiştir. Ana iyileştirme noktaları aşağıdaki gibidir:
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Metin**|**Metin**|
+|Metin->Telefon|Metin->BPE|
+|Telefon->Gömme|BPE->Gömme|
+|Roberta-Çince|BGE-M3|
+|**Konuşma Kodlayıcı**|**Konuşma Kodlayıcı**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Gömme|
+|1024 Konuşma Jetonu|4096 Konuşma Jetonu|
+|**AR**|**AR**|
+|Eski Tarz GPT|Qwen2-0.3b|
+|**Konuşma Kod Çözücü**|**Konuşma Kod Çözücü**|
+|VITS|VITS2|
+|Gizli Boyut 192|Gizli Boyut 256|
+|2 Kafa|4 Kafa|
+|Ara Boyut 768|Ara Boyut 1024|
+|**Eğitim**|**Eğitim**|
+|Sıfır-Atış Eğitimi Yok|Aynı Konuşmacı ile Farklı Konuşma Çıkarımı|
+|ZH,EN,JA|Çok Dilli|
+|2000 saat|Henüz Belli Değil|
 
 1. **Yerel çoklu dil desteği**: Sadece Çince, Japonca ve İngilizce ile sınırlı kalmayıp dünya üzerindeki herhangi bir dili destekler.
 2. **Dil belirtmeye gerek yok**: Her zaman çoklu dilde olabilir ve diller arasında serbestçe karışık konuşabilirsiniz.
