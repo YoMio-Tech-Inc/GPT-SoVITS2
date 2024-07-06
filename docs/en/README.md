@@ -24,6 +24,14 @@ This name has been approved by the author of GPT-SoVITS, [花儿不哭](https://
 |ZH,EN,JA|Multi-Lingual|
 |2k hours|Not Sure Yet|
 
+1. **Native support for multiple languages**: Not limited to Chinese, Japanese, and English, but supports any language in the world.
+2. **No need to specify a language**: It is always multilingual and you can freely mix languages when speaking.
+3. **Multilingual text emotion extraction**: More accurate emotional analysis of languages, making speech more expressive.
+4. **Zero Shot enhancement**: Now, instead of recommending fine-tuning the model, zero shot is performed directly using only a few seconds of the target audio.
+5. **Reference audio fusion**: Multiple reference audio clips can be uploaded, and the resulting voice will be a fusion of multiple audio clips.
+6. **Faster inference**: Changing positional embedding to RoPE, eliminating the need to recompute the entire sequence's embedding for each token inference.
+
+
 ### **Data and collaboration solicitation**: Data is currently being collected. QQ 1715069210, if the data set meets the requirements, credit will be given in the project.
 
 #### Currently organizing modification ideas in the source code. Search for # ! to find comments. If interested, feel free to contact via the above QQ.
