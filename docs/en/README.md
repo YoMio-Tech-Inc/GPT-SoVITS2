@@ -2,13 +2,27 @@
 
 This name has been approved by the author of GPT-SoVITS, [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0).
 ### This project is still under development and is an improvement based on [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS). The main improvements are as follows:
-
-1. **Native support for multiple languages**: Not limited to Chinese, Japanese, and English, but supports any language in the world.
-2. **No need to specify a language**: It is always multilingual and you can freely mix languages when speaking.
-3. **Multilingual text emotion extraction**: More accurate emotional analysis of languages, making speech more expressive.
-4. **Zero Shot enhancement**: Now, instead of recommending fine-tuning the model, zero shot is performed directly using only a few seconds of the target audio.
-5. **Reference audio fusion**: Multiple reference audio clips can be uploaded, and the resulting voice will be a fusion of multiple audio clips.
-6. **Faster inference**: Changing positional embedding to RoPE, eliminating the need to recompute the entire sequence's embedding for each token inference.
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Text**|**Text**|
+|Text->Phone|Text->BPE|
+|Phone->Embedding|BPE->Embedding|
+|Roberta-Chinese|BGE-M3|
+|**Speech Encoder**|**Speech Encoder**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Embedding|
+|1024 Speech Token|4096 Speech Token|
+|**AR**|**AR**|
+|Old-Style GPT|Qwen2-0.3b|
+|**Speech Decoder**|**Speech Decoder**|
+|VITS|VITS2|
+|Hidden Size 192|Hidden Size 256|
+|2 Heads|4 Heads|
+|Inter Size 768|Inter Size 1024|
+|**Training**|**Training**|
+|No Zero-Shot Training|Inference Different Speech with same Speaker|
+|ZH,EN,JA|Multi-Lingual|
+|2k hours|Not Sure Yet|
 
 ### **Data and collaboration solicitation**: Data is currently being collected. QQ 1715069210, if the data set meets the requirements, credit will be given in the project.
 
