@@ -2,6 +2,27 @@
 
 Este nombre ha sido autorizado por el autor de GPT-SoVITS, [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0).
 ### Este proyecto aún está en desarrollo, basado en [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), con las principales mejoras siguientes:
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Texto**|**Texto**|
+|Texto->Teléfono|Texto->BPE|
+|Teléfono->Embedding|BPE->Embedding|
+|Roberta-Chino|BGE-M3|
+|**Codificador de Voz**|**Codificador de Voz**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Embedding|
+|1024 Token de Voz|4096 Token de Voz|
+|**AR**|**AR**|
+|GPT Estilo Antiguo|Qwen2-0.3b|
+|**Decodificador de Voz**|**Decodificador de Voz**|
+|VITS|VITS2|
+|Tamaño Oculto 192|Tamaño Oculto 256|
+|2 Cabezas|4 Cabezas|
+|Tamaño Inter 768|Tamaño Inter 1024|
+|**Entrenamiento**|**Entrenamiento**|
+|Sin Entrenamiento de Zero-Shot|Inferencia de Voz Diferente con el mismo Orador|
+|ZH,EN,JA|Multi-Lingual|
+|2000 horas|Aún No Seguro|
 
 1. **Soporte nativo multilingüe**: No limitado a chino, japonés e inglés, sino a cualquier idioma del mundo.
 2. **No es necesario especificar el idioma**: Siempre es multilingüe, permitiendo mezclar idiomas libremente.
