@@ -38,14 +38,21 @@ Este nome foi autorizado pelo autor do GPT-SoVITS, [花儿不哭](https://space.
 ### Lista de mudanças
 
 #### Mudanças no código
-De um único código -> 2 códigos/4 códigos.
+~~De um único código -> 2 códigos/4 códigos.~~
+
+O tamanho do vocabulário do $S^3$ é 4096 em um único código.
 #### Mudanças no GPT
 Mudança para qwen2-0.3b.
 #### Mudanças na codificação de áudio
-cnhubert -> ~~w2v-bert-2.0 (provisório, o conjunto de treinamento mais extenso de 4.6m horas multilíngues da Meta. Se resultar em pronúncias estranhas, mudar para cnhubert-large)~~ / cnhubert-large / mHubert-147.
-Descobri que treinar w2v-bert-2.0 é difícil, enquanto que mHubert-147 é mais fácil, embora seja quatro vezes maior e fp16 falhe, só fp32 funciona. Além disso, mHubert é suficientemente grande (600MB).
+cnhubert -> ~~w2v-bert-2.0 (provisório, o conjunto de treinamento mais extenso de 4.6m horas multilíngues da Meta. Se resultar em pronúncias estranhas, mudar para cnhubert-large)~~ ~~/ cnhubert-large / mHubert-147.~~
+~~Descobri que treinar w2v-bert-2.0 é difícil, enquanto que mHubert-147 é mais fácil, embora seja quatro vezes maior e fp16 falhe, só fp32 funciona. Além disso, mHubert é suficientemente grande (600MB).~~
+
+Usando o codificador $S^3$ do CosyVoice, com uma camada de embedding externa.
 #### Mudanças na codificação de texto
 Eliminar fonemas e seus correspondentes embeddings.
+
+Fonema -> Tokenização BPE.
+
 cn-roberta -> BGE-m3.
 #### Mudanças no posicionamento de embeddings
 Separar codificação de texto e áudio em sinusoidal -> fazer tudo com RoPE embedding.
