@@ -38,14 +38,20 @@ Bu isim, GPT-SoVITS'in yazarı [花儿不哭](https://space.bilibili.com/5760446
 ### Değişiklik Listesi
 
 #### Kod kitabındaki değişiklikler
-Tek kod kitabı -> 2 kod kitabı/4 kod kitabı
+~~Tek kod kitabı -> 2 kod kitabı/4 kod kitabı~~
+
+$S^3$'ün kelime dağarcığı boyutu 4096 tek kodludur.
 #### GPT değişiklikleri
 qwen2-0.3b ile değiştirildi
 #### Ses kodlamasındaki değişiklikler
-cnhubert -> ~~w2v-bert-2.0 (geçici olarak, bu meta tarafından şu anda en çarpıcı 4.6m saatlik çok dilli ön eğitim yapılmaktadır. Sonuç yabancının Çince konuşması gibi olursa cnhubert-large ile değiştirilecek)~~/cnhubert-large/mHubert-147
-w2v-bert-2.0 eğitiminin biraz zor olduğunu fark ettim, mHubert-147 eğitimi daha kolay olacak, boyutu dört kat daha küçük ve gerçek testte fp16 doğrudan çöküyor, sadece fp32 kullanılabilir. Ayrıca mHubert zaten yeterince büyük (600MB).
+cnhubert -> ~~w2v-bert-2.0 (geçici olarak, bu meta tarafından şu anda en çarpıcı 4.6m saatlik çok dilli ön eğitim yapılmaktadır. Sonuç yabancının Çince konuşması gibi olursa cnhubert-large ile değiştirilecek)~~ ~~/cnhubert-large/mHubert-147~~ ~~w2v-bert-2.0 eğitiminin biraz zor olduğunu fark ettim, mHubert-147 eğitimi daha kolay olacak, boyutu dört kat daha küçük ve gerçek testte fp16 doğrudan çöküyor, sadece fp32 kullanılabilir. Ayrıca mHubert zaten yeterince büyük (600MB)~~
+
+CosyVoice'taki $S^3$ Kodlayıcıyı kullanarak, harici bir Gömme katmanı bağlama.
 #### Metin kodlamasındaki değişiklikler
 Fonemleri ve ilgili embedding'leri kaldırın
+
+Fonem -> BPE Tokenizasyonu.
+
 cn-roberta -> BGE-m3
 #### Pozisyon kodlamasındaki değişiklikler
 Metin ve ses kodlamasını ayrı ayrı sinusoidal -> global olarak RoPE embedding yapın.
