@@ -5,7 +5,16 @@ from torch import nn
 from torch.nn import functional as F
 from torchmetrics.classification import MulticlassAccuracy
 from tqdm import tqdm
+from transformers.models import qwen2
+from transformers import AutoConfig
 
+config = AutoConfig.from_pretrained(
+    "Qwen/Qwen2-0.5B",
+)
+config.hidden_size = 768
+config.num_hidden_layers = 16
+config.max_window_layers = 16
+config.num_attention_heads = 12
 from AR.models.utils import (
     dpo_loss,
     get_batch_logps,
@@ -66,18 +75,19 @@ class Text2SemanticDecoder(nn.Module):
         #     self.embedding_dim, dropout=0.1, scale=False, alpha=True
         # )
 
-        self.h = TransformerEncoder(
-            TransformerEncoderLayer(
-                d_model=self.model_dim,
-                nhead=self.num_head,
-                dim_feedforward=self.model_dim * 4,
-                dropout=0.1,
-                batch_first=True,
-                norm_first=norm_first,
-            ),
-            num_layers=self.num_layers,
-            norm=LayerNorm(self.model_dim) if norm_first else None,
-        )
+        # self.h = TransformerEncoder(
+        #     TransformerEncoderLayer(
+        #         d_model=self.model_dim,
+        #         nhead=self.num_head,
+        #         dim_feedforward=self.model_dim * 4,
+        #         dropout=0.1,
+        #         batch_first=True,
+        #         norm_first=norm_first,
+        #     ),
+        #     num_layers=self.num_layers,
+        #     norm=LayerNorm(self.model_dim) if norm_first else None,
+        # )
+        self.h = qwen2.Qwen2Model(config=config).to("cuda")
 
         self.ar_predict_layer = nn.Linear(self.model_dim, self.vocab_size, bias=False)
         self.loss_fct = nn.CrossEntropyLoss(reduction="sum")

@@ -4,6 +4,27 @@
 
 此名字已获GPT-SoVITS作者[花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0)的许可。
 ### 此项目还在开发当中，基于 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 改良而来，主要改进点如下：
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Text**|**Text**|
+|Text->Phone|Text->BPE|
+|Phone->Embedding|BPE->Embedding|
+|Roberta-Chinese|BGE-M3|
+|**Speech Encoder**|**Speech Encoder**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Embedding|
+|1024 Speech Token|4096 Speech Token|
+|**AR**|**AR**|
+|Old-Style GPT|Qwen2-0.3b|
+|**Speech Decoder**|**Speech Decoder**|
+|VITS|VITS2|
+|Hidden Size 192|Hidden Size 256|
+|2 Heads|4 Heads|
+|Inter Size 768|Inter Size 1024|
+|**Training**|**Training**|
+|No Zero-Shot Training|Inference Different Speech with same Speaker|
+|ZH,EN,JA|Multi-Lingual|
+|2k hours|Not Sure Yet|
 
 1. **原生支持多语言**：不局限于中日英，而是世界上任何语言。
 2. **不再需要指定语言**：任何时候都是多语言，可以随意地多语言混合说话。
@@ -21,14 +42,21 @@
 ### 改动列表
 
 #### 码本的变动
-单码本-> 2码本/4码本
+~~单码本-> 2码本/4码本~~
+
+$S^3$ 的vocab size为4096 单码本
 #### GPT改动
 换成qwen2-0.3b
 #### 音频编码的变动
-cnhubert-> ~~w2v-bert-2.0(暂定,此为meta做的目前训练集最夸张4.6m小时多语言预训练。如果结果像外国人说中文就换cnhubert-large)~~/cnhubert-large/mHubert-147
-我发现w2v-bert-2.0训练有点难，mHubert-147训练会比较简单，体积差了四倍，而且实测fp16直接会炸，只能fp32.并且mHubert已经够大了(600MB)
+~~cnhubert-> ~~w2v-bert-2.0(暂定,此为meta做的目前训练集最夸张4.6m小时多语言预训练。如果结果像外国人说中文就换cnhubert-large)~~/cnhubert-large/mHubert-147~~
+~~我发现w2v-bert-2.0训练有点难，mHubert-147训练会比较简单，体积差了四倍，而且实测fp16直接会炸，只能fp32.并且mHubert已经够大了(600MB)~~
+
+使用CosyVoice中的$S^3$ Encoder，外接Embedding层
 #### 文本编码的改动
 去掉音素以及相应embedding
+
+音素->BPE分词
+
 cn-roberta ->  BGE-m3
 #### 位置编码的改动
 文本与语音编码各自做sinusoidal->全局做RoPE embedding.
