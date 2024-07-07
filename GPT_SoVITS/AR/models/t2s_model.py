@@ -1,95 +1,68 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_model.py
 # reference: https://github.com/lifeiteng/vall-e
+# ruff:noqa
+import os
+import sys
+
+# 获取当前文件的绝对路径
+current_file_path = os.path.abspath(__file__)
+
+# 获取当前文件所在的目录
+current_dir = os.path.dirname(current_file_path)
+parent_dir = os.path.dirname(current_dir)
+grand_parent_dir = os.path.dirname(parent_dir)
+# 将当前目录添加到Python的模块搜索路径中
+sys.path.append(current_dir)
+sys.path.append(parent_dir)
+sys.path.append(grand_parent_dir)
+
 import torch
+from AR.models.utils import (
+    dpo_loss,
+    get_batch_logps,
+    make_pad_mask,
+    make_reject_y,
+    sample,
+    topk_sampling,
+)
 from torch import nn
 from torch.nn import functional as F
 from torchmetrics.classification import MulticlassAccuracy
 from tqdm import tqdm
-from transformers.models import qwen2
 from transformers import AutoConfig
+from transformers.models import qwen2
 
-config = AutoConfig.from_pretrained(
+qwen_config = AutoConfig.from_pretrained(
     "Qwen/Qwen2-0.5B",
 )
-config.hidden_size = 768
-config.num_hidden_layers = 16
-config.max_window_layers = 16
-config.num_attention_heads = 12
-from AR.models.utils import (
-    dpo_loss,
-    get_batch_logps,
-    logits_to_probs,
-    make_pad_mask,
-    make_reject_y,
-    multinomial_sample_one_no_sync,
-    sample,
-    topk_sampling,
-)
-from AR.modules.embedding import SinePositionalEmbedding, TokenEmbedding
-from AR.modules.transformer import (
-    LayerNorm,
-    TransformerEncoder,
-    TransformerEncoderLayer,
-)
-
-default_config = {
-    "embedding_dim": 512,
-    "hidden_dim": 512,
-    "num_head": 8,
-    "num_layers": 12,
-    "num_codebook": 8,
-    "p_dropout": 0.0,
-    "vocab_size": 1024 + 1,
-    "phoneme_vocab_size": 512,
-    "EOS": 1024,
-}
+qwen_config.hidden_size = 768
+qwen_config.num_hidden_layers = 16
+qwen_config.max_window_layers = 16
+qwen_config.num_attention_heads = 12
 
 
 class Text2SemanticDecoder(nn.Module):
-    def __init__(self, config, norm_first=False, top_k=3):
+    def __init__(self, config, top_k=3):
         super(Text2SemanticDecoder, self).__init__()
-        self.model_dim = config["model"]["hidden_dim"]
         self.embedding_dim = config["model"]["embedding_dim"]
-        self.num_head = config["model"]["head"]
-        self.num_layers = config["model"]["n_layer"]
-        self.norm_first = norm_first
-        self.vocab_size = config["model"]["vocab_size"]
-        self.phoneme_vocab_size = config["model"]["phoneme_vocab_size"]
-        self.p_dropout = config["model"]["dropout"]
-        self.EOS = config["model"]["EOS"]
-        self.norm_first = norm_first
-        assert self.EOS == self.vocab_size - 1
-        # should be same as num of kmeans bin
-        # assert self.EOS == 1024
-        self.bert_proj = nn.Linear(1024, self.embedding_dim)
-        # self.ar_text_embedding = TokenEmbedding( # ! 在GPT SOVITS2中不需要自己训练embedding。
-        #     self.embedding_dim, self.phoneme_vocab_size, self.p_dropout
-        # )
-        # self.ar_text_position = SinePositionalEmbedding(
-        #     self.embedding_dim, dropout=0.1, scale=False, alpha=True
-        # )
-        # self.ar_audio_embedding = TokenEmbedding(
-        #     self.embedding_dim, self.vocab_size, self.p_dropout
-        # )
-        # self.ar_audio_position = SinePositionalEmbedding(
-        #     self.embedding_dim, dropout=0.1, scale=False, alpha=True
-        # )
+        self.text_vocab_size = config["model"]["text_vocab_size"]
+        self.speech_vocab_size = config["model"]["speech_vocab_size"]
+        self.bert_dim = config["model"]["bert_dim"]
+        self.qwen_config = config.get("qwen", qwen_config)
+        self.EOS = self.speech_vocab_size - 1
+        self.bert_proj = nn.Linear(self.bert_dim, self.embedding_dim)
+        self.text_embedding = nn.Embedding(
+            self.text_vocab_size,
+            self.embedding_dim,
+        )
 
-        # self.h = TransformerEncoder(
-        #     TransformerEncoderLayer(
-        #         d_model=self.model_dim,
-        #         nhead=self.num_head,
-        #         dim_feedforward=self.model_dim * 4,
-        #         dropout=0.1,
-        #         batch_first=True,
-        #         norm_first=norm_first,
-        #     ),
-        #     num_layers=self.num_layers,
-        #     norm=LayerNorm(self.model_dim) if norm_first else None,
-        # )
-        self.h = qwen2.Qwen2Model(config=config).to("cuda")
+        self.speech_embedding = nn.Embedding(self.speech_vocab_size, self.embedding_dim)
 
-        self.ar_predict_layer = nn.Linear(self.model_dim, self.vocab_size, bias=False)
+        self.llm = qwen2.Qwen2Model(config=self.qwen_config).to("cuda")
+
+        self.predict_layer = nn.Linear(
+            self.embedding_dim, self.speech_vocab_size, bias=False
+        )
         self.loss_fct = nn.CrossEntropyLoss(reduction="sum")
 
         self.ar_accuracy_metric = MulticlassAccuracy(
@@ -100,106 +73,111 @@ class Text2SemanticDecoder(nn.Module):
             ignore_index=self.EOS,
         )
 
-    def make_input_data(self, x, x_lens, y, y_lens, bert_feature):
-        x = self.ar_text_embedding(x)
-        x = x + self.bert_proj(bert_feature.transpose(1, 2))
-        x = self.ar_text_position(x)
-        x_mask = make_pad_mask(x_lens)
-
-        y_mask = make_pad_mask(y_lens)
-        y_mask_int = y_mask.type(torch.int64)
-        codes = y.type(torch.int64) * (1 - y_mask_int)
-
-        # Training
-        # AR Decoder
-        y, targets = self.pad_y_eos(codes, y_mask_int, eos_id=self.EOS)
-        x_len = x_lens.max()
-        y_len = y_lens.max()
-        y_emb = self.ar_audio_embedding(y)
-        y_pos = self.ar_audio_position(y_emb)
-
-        xy_padding_mask = torch.concat([x_mask, y_mask], dim=1)
-
-        ar_xy_padding_mask = xy_padding_mask
-
-        x_attn_mask = F.pad(
-            torch.zeros((x_len, x_len), dtype=torch.bool, device=x.device),
-            (0, y_len),
-            value=True,
-        )
-
-        y_attn_mask = F.pad(
-            torch.triu(
-                torch.ones(y_len, y_len, dtype=torch.bool, device=x.device),
-                diagonal=1,
-            ),
-            (x_len, 0),
-            value=False,
-        )
-
-        xy_attn_mask = torch.concat([x_attn_mask, y_attn_mask], dim=0)
-        bsz, src_len = x.shape[0], x_len + y_len
-        _xy_padding_mask = (
-            ar_xy_padding_mask.view(bsz, 1, 1, src_len)
-            .expand(-1, self.num_head, -1, -1)
-            .reshape(bsz * self.num_head, 1, src_len)
-        )
-        xy_attn_mask = xy_attn_mask.logical_or(_xy_padding_mask)
-        new_attn_mask = torch.zeros_like(xy_attn_mask, dtype=x.dtype)
-        new_attn_mask.masked_fill_(xy_attn_mask, float("-inf"))
-        xy_attn_mask = new_attn_mask
-        # x 和完整的 y 一次性输入模型
-        xy_pos = torch.concat([x, y_pos], dim=1)
-
-        return xy_pos, xy_attn_mask, targets
-
-    def forward_dpo(self, x, x_lens, y, y_lens, bert_feature):
+    def forward(
+        self, x, x_lens, y, y_lens, prompt_x, prompt_x_lens, prompt_y, prompt_y_lens, x_bert_feature, prompt_x_bert_feature
+    ):
         """
-        x: phoneme_ids
-        y: semantic_ids
+        x: target text_ids - [batch_size, x_len]
+        y: target semantic_ids - [batch_size, y_len]
+        prompt_x: prompt text_ids - [batch_size, prompt_x_len]
+        prompt_y: prompt semantic_ids - [batch_size, prompt_y_len]
         """
+        batch_size = x.shape[0]
+        
+        y_mask = torch.arange(y.shape[1]).expand(batch_size, -1) < y_lens.unsqueeze(1)
+        y = torch.where(y_mask, y, self.EOS)
+        targets = torch.nn.functional.pad(y, (0, 1), value=self.EOS)
+        y, targets = targets[:, :-1], targets[:, 1:]
 
-        reject_y, reject_y_lens = make_reject_y(y, y_lens)
-
-        xy_pos, xy_attn_mask, targets = self.make_input_data(
-            x, x_lens, y, y_lens, bert_feature
+        xy_max_len = x_lens.max() + y_lens.max()
+        
+        x = self.text_embedding(x)
+        y = self.speech_embedding(y)
+        
+        prompt_x = self.text_embedding(prompt_x)
+        prompt_y = self.speech_embedding(prompt_y)
+        
+        if x_bert_feature != None and prompt_x_bert_feature != None:
+            x_bert_feature = self.bert_proj(x_bert_feature)
+            prompt_x_bert_feature = self.bert_proj(prompt_x_bert_feature)
+            x += x_bert_feature
+            prompt_x += prompt_x_bert_feature
+        
+        
+        xy_embedded = torch.zeros(
+            (batch_size, xy_max_len, self.embedding_dim), device=x.device
         )
 
-        xy_dec, _ = self.h(
-            (xy_pos, None),
-            mask=xy_attn_mask,
+        for i in range(batch_size):
+            xy_embedded[i, : x_lens[i]] = x[i, : x_lens[i]]
+            xy_embedded[i, x_lens[i] : x_lens[i] + y_lens[i]] = y[i, : y_lens[i]]
+
+        prompt_xy_max_len = prompt_x_lens.max() + prompt_y_lens.max()
+
+        prompt_xy_embedded = torch.zeros(
+            (batch_size, prompt_xy_max_len, self.embedding_dim), device=x.device
         )
-        x_len = x_lens.max()
-        logits = self.ar_predict_layer(xy_dec[:, x_len:])
+        
+        for i in range(batch_size):
+            prompt_xy_embedded[i, : prompt_x_lens[i]] = prompt_x[i, : prompt_x_lens[i]]
+            prompt_xy_embedded[
+                i, prompt_x_lens[i] : prompt_x_lens[i] + prompt_y_lens[i]
+            ] = prompt_y[i, : prompt_y_lens[i]]
 
-        ###### DPO #############
-        reject_xy_pos, reject_xy_attn_mask, reject_targets = self.make_input_data(
-            x, x_lens, reject_y, reject_y_lens, bert_feature
+        prompt_lens = prompt_x_lens + prompt_y_lens
+        xy_lens = x_lens + y_lens
+        
+        all_xy_embedded = torch.zeros(
+            (batch_size, xy_max_len + prompt_xy_max_len, self.embedding_dim),
+            device=x.device,
+        )
+        all_xy_mask = torch.zeros(
+            (batch_size, xy_max_len + prompt_xy_max_len), dtype=torch.bool
         )
 
-        reject_xy_dec, _ = self.h(
-            (reject_xy_pos, None),
-            mask=reject_xy_attn_mask,
-        )
-        x_len = x_lens.max()
-        reject_logits = self.ar_predict_layer(reject_xy_dec[:, x_len:])
+        for i in range(batch_size):
+            all_xy_embedded[i, : prompt_lens[i]] = prompt_xy_embedded[
+                i, : prompt_lens[i]
+            ]
+            all_xy_embedded[i, prompt_lens[i] : prompt_lens[i] + xy_lens[i]] = (
+                xy_embedded[i, : xy_lens[i]]
+            )
+            all_xy_mask[i, : prompt_lens[i] + xy_lens[i]] = True
 
-        # loss
-        # from feiteng: 每次 duration 越多, 梯度更新也应该更多, 所以用 sum
 
-        loss_1 = F.cross_entropy(logits.permute(0, 2, 1), targets, reduction="sum")
-        acc = self.ar_accuracy_metric(logits.permute(0, 2, 1).detach(), targets).item()
+        xy_dec = self.llm(all_xy_embedded,
+            attention_mask=all_xy_mask,
+        ).last_hidden_state
+        total_loss = 0
+        total_acc = 0
+        
+        for i in range(batch_size):
+            # 选择当前样本的音频部分输出
+            audio_start = prompt_lens[i] + x_lens[i]
+            audio_end = audio_start + y_lens[i]
+            audio_outputs = xy_dec[i, audio_start:audio_end]
+            
+            # 计算logits
+            logits = self.predict_layer(audio_outputs)
+            
+            # 准备目标值
+            targets = y[i, :y_lens[i]]
+            
+            # 计算损失
+            loss = F.cross_entropy(logits, targets, reduction='sum')
+            total_loss += loss
+            
+            # 计算准确率
+            acc = self.ar_accuracy_metric(logits.detach(), targets)
+            total_acc += acc
+        
+        # 计算平均损失和准确率
+        avg_loss = total_loss / batch_size
+        avg_acc = total_acc / batch_size
+        
+        return avg_loss, avg_acc
 
-        A_logits, R_logits = get_batch_logps(
-            logits, reject_logits, targets, reject_targets
-        )
-        loss_2, _, _ = dpo_loss(A_logits, R_logits, 0, 0, 0.2, reference_free=True)
-
-        loss = loss_1 + loss_2
-
-        return loss, acc
-
-    def forward(self, x, x_lens, y, y_lens):
+    def forward_deprecated(self, x, x_lens, y, y_lens):
         """
         x: bert_feature
         y: semantic_ids
@@ -247,6 +225,8 @@ class Text2SemanticDecoder(nn.Module):
         new_attn_mask = torch.zeros_like(xy_attn_mask, dtype=x.dtype)
         new_attn_mask.masked_fill_(xy_attn_mask, float("-inf"))
         xy_attn_mask = new_attn_mask
+        print(xy_attn_mask)
+        print(xy_attn_mask.shape)
         # x 和完整的 y 一次性输入模型
         xy_pos = torch.concat([x, y_pos], dim=1)
         xy_dec, _ = self.h(
@@ -329,7 +309,7 @@ class Text2SemanticDecoder(nn.Module):
             xy_dec, _ = self.h(
                 (xy_pos, None),
                 mask=xy_attn_mask,
-            ) 
+            )
             logits = self.ar_predict_layer(xy_dec[:, -1])
             samples = topk_sampling(
                 logits, top_k=top_k, top_p=1.0, temperature=temperature
