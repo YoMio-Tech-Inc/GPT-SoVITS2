@@ -36,9 +36,10 @@ qwen_config = AutoConfig.from_pretrained(
     "Qwen/Qwen2-0.5B",
 )
 qwen_config.hidden_size = 768
-qwen_config.num_hidden_layers = 16
-qwen_config.max_window_layers = 16
-qwen_config.num_attention_heads = 12
+qwen_config.num_attention_heads = 16
+qwen_config.num_hidden_layers = 20
+qwen_config.max_window_layers = 20
+qwen_config.intermediate_size = 4096
 
 
 class Text2SemanticDecoder(nn.Module):
@@ -58,7 +59,7 @@ class Text2SemanticDecoder(nn.Module):
 
         self.speech_embedding = nn.Embedding(self.speech_vocab_size, self.embedding_dim)
 
-        self.llm = qwen2.Qwen2Model(config=self.qwen_config).to("cuda")
+        self.llm = qwen2.Qwen2Model(config=self.qwen_config)
 
         self.predict_layer = nn.Linear(
             self.embedding_dim, self.speech_vocab_size, bias=False
@@ -66,15 +67,25 @@ class Text2SemanticDecoder(nn.Module):
         self.loss_fct = nn.CrossEntropyLoss(reduction="sum")
 
         self.ar_accuracy_metric = MulticlassAccuracy(
-            self.vocab_size,
+            self.speech_vocab_size,
             top_k=top_k,
             average="micro",
             multidim_average="global",
             ignore_index=self.EOS,
         )
 
-    def forward(
-        self, x, x_lens, y, y_lens, prompt_x, prompt_x_lens, prompt_y, prompt_y_lens, x_bert_feature, prompt_x_bert_feature
+    def forward(  # ! 需要一个bos标识符给y。
+        self,
+        x,
+        x_lens,
+        y,
+        y_lens,
+        prompt_x,
+        prompt_x_lens,
+        prompt_y,
+        prompt_y_lens,
+        x_bert_feature,
+        prompt_x_bert_feature,
     ):
         """
         x: target text_ids - [batch_size, x_len]
@@ -83,100 +94,196 @@ class Text2SemanticDecoder(nn.Module):
         prompt_y: prompt semantic_ids - [batch_size, prompt_y_len]
         """
         batch_size = x.shape[0]
-        
+
         y_mask = torch.arange(y.shape[1]).expand(batch_size, -1) < y_lens.unsqueeze(1)
         y = torch.where(y_mask, y, self.EOS)
         targets = torch.nn.functional.pad(y, (0, 1), value=self.EOS)
         y, targets = targets[:, :-1], targets[:, 1:]
 
-        xy_max_len = x_lens.max() + y_lens.max()
-        
-        x = self.text_embedding(x)
-        y = self.speech_embedding(y)
-        
         prompt_x = self.text_embedding(prompt_x)
         prompt_y = self.speech_embedding(prompt_y)
-        
+        x = self.text_embedding(x)
+        y = self.speech_embedding(y)
+
         if x_bert_feature != None and prompt_x_bert_feature != None:
             x_bert_feature = self.bert_proj(x_bert_feature)
             prompt_x_bert_feature = self.bert_proj(prompt_x_bert_feature)
             x += x_bert_feature
             prompt_x += prompt_x_bert_feature
-        
-        
-        xy_embedded = torch.zeros(
-            (batch_size, xy_max_len, self.embedding_dim), device=x.device
-        )
 
-        for i in range(batch_size):
-            xy_embedded[i, : x_lens[i]] = x[i, : x_lens[i]]
-            xy_embedded[i, x_lens[i] : x_lens[i] + y_lens[i]] = y[i, : y_lens[i]]
-
-        prompt_xy_max_len = prompt_x_lens.max() + prompt_y_lens.max()
-
+        prompt_lens = prompt_x_lens + prompt_y_lens
+        prompt_xy_max_len = prompt_lens.max()
         prompt_xy_embedded = torch.zeros(
             (batch_size, prompt_xy_max_len, self.embedding_dim), device=x.device
         )
-        
         for i in range(batch_size):
-            prompt_xy_embedded[i, : prompt_x_lens[i]] = prompt_x[i, : prompt_x_lens[i]]
-            prompt_xy_embedded[
-                i, prompt_x_lens[i] : prompt_x_lens[i] + prompt_y_lens[i]
-            ] = prompt_y[i, : prompt_y_lens[i]]
+            prompt_xy_embedded[i, : prompt_lens[i]] = torch.cat(
+                [prompt_x[i, : prompt_x_lens[i]], prompt_y[i, : prompt_y_lens[i]]],
+                dim=0,
+            )
 
-        prompt_lens = prompt_x_lens + prompt_y_lens
         xy_lens = x_lens + y_lens
-        
+        xy_max_len = xy_lens.max()
+        xy_embedded = torch.zeros(
+            (batch_size, xy_max_len, self.embedding_dim), device=x.device
+        )
+        for i in range(batch_size):
+            xy_embedded[i, : xy_lens[i]] = torch.cat(
+                [x[i, : x_lens[i]], y[i, : y_lens[i]]], dim=0
+            )
+
+        all_xy_lens = prompt_lens + xy_lens
+        all_xy_max_len = all_xy_lens.max()
         all_xy_embedded = torch.zeros(
-            (batch_size, xy_max_len + prompt_xy_max_len, self.embedding_dim),
+            (batch_size, all_xy_max_len, self.embedding_dim),
             device=x.device,
         )
-        all_xy_mask = torch.zeros(
-            (batch_size, xy_max_len + prompt_xy_max_len), dtype=torch.bool
-        )
+        all_xy_mask = torch.zeros((batch_size, all_xy_max_len), dtype=torch.bool)
 
         for i in range(batch_size):
-            all_xy_embedded[i, : prompt_lens[i]] = prompt_xy_embedded[
-                i, : prompt_lens[i]
-            ]
-            all_xy_embedded[i, prompt_lens[i] : prompt_lens[i] + xy_lens[i]] = (
-                xy_embedded[i, : xy_lens[i]]
+            all_xy_embedded[i, : all_xy_lens[i]] = torch.cat(
+                [prompt_xy_embedded[i, : prompt_lens[i]], xy_embedded[i, : xy_lens[i]]],
+                dim=0,
             )
-            all_xy_mask[i, : prompt_lens[i] + xy_lens[i]] = True
-
-
-        xy_dec = self.llm(all_xy_embedded,
+            all_xy_mask[i, : all_xy_lens[i]] = True
+            
+        xy_dec = self.llm(
+            inputs_embeds=all_xy_embedded,
             attention_mask=all_xy_mask,
         ).last_hidden_state
         total_loss = 0
         total_acc = 0
-        
+        total_tokens = 0
         for i in range(batch_size):
             # 选择当前样本的音频部分输出
             audio_start = prompt_lens[i] + x_lens[i]
             audio_end = audio_start + y_lens[i]
-            audio_outputs = xy_dec[i, audio_start:audio_end]
-            
+            audio_outputs = xy_dec[i, audio_start:audio_end].unsqueeze(
+                0
+            )  # 增加batch维度
+
             # 计算logits
             logits = self.predict_layer(audio_outputs)
-            
-            # 准备目标值
-            targets = y[i, :y_lens[i]]
-            
-            # 计算损失
-            loss = F.cross_entropy(logits, targets, reduction='sum')
-            total_loss += loss
-            
-            # 计算准确率
-            acc = self.ar_accuracy_metric(logits.detach(), targets)
-            total_acc += acc
-        
-        # 计算平均损失和准确率
-        avg_loss = total_loss / batch_size
-        avg_acc = total_acc / batch_size
-        
-        return avg_loss, avg_acc
+            logits = logits.view(
+                -1, self.speech_vocab_size
+            )  # 调整形状为 (y_lens[i], speech_vocab_size)
 
+            # 选择对应的targets
+            current_targets = targets[i, : y_lens[i]]  # 形状为 (y_lens[i],)
+            # 计算损失
+            loss = F.cross_entropy(logits, current_targets, reduction="sum")
+            total_loss += loss
+
+            # 计算准确率
+            acc = self.ar_accuracy_metric(logits.detach(), current_targets)
+            total_acc += acc * y_lens[i]  # 乘以序列长度，因为准确率是平均值
+
+            total_tokens += y_lens[i]
+
+        # 计算平均损失和准确率
+        avg_loss = total_loss / total_tokens
+        avg_acc = total_acc / total_tokens
+
+        return avg_loss, avg_acc
+    def infer(
+        self,
+        x,
+        x_lens,
+        prompt_x,
+        prompt_x_lens,
+        prompt_y,
+        prompt_y_lens,
+        x_bert_feature,
+        prompt_x_bert_feature,
+        top_k: int = -100,
+        early_stop_num: int = -1,
+        temperature: float = 1.0,
+    ):
+        """
+        x: target text_ids - [batch_size, x_len]
+        prompt_x: prompt text_ids - [batch_size, prompt_x_len]
+        prompt_y: prompt semantic_ids - [batch_size, prompt_y_len]
+        """
+        batch_size = x.shape[0]
+
+        prompt_x = self.text_embedding(prompt_x)
+        prompt_y = self.speech_embedding(prompt_y)
+        x = self.text_embedding(x)
+
+        if x_bert_feature is not None and prompt_x_bert_feature is not None:
+            x_bert_feature = self.bert_proj(x_bert_feature)
+            prompt_x_bert_feature = self.bert_proj(prompt_x_bert_feature)
+            x += x_bert_feature
+            prompt_x += prompt_x_bert_feature
+
+        prompt_lens = prompt_x_lens + prompt_y_lens
+        prompt_xy_max_len = prompt_lens.max()
+        prompt_xy_embedded = torch.zeros(
+            (batch_size, prompt_xy_max_len, self.embedding_dim), device=x.device
+        )
+        for i in range(batch_size):
+            prompt_xy_embedded[i, : prompt_lens[i]] = torch.cat(
+                [prompt_x[i, : prompt_x_lens[i]], prompt_y[i, : prompt_y_lens[i]]],
+                dim=0,
+            )
+
+        xy_lens = x_lens
+        xy_max_len = xy_lens.max()
+        xy_embedded = torch.zeros(
+            (batch_size, xy_max_len, self.embedding_dim), device=x.device
+        )
+        for i in range(batch_size):
+            xy_embedded[i, : x_lens[i]] = x[i, : x_lens[i]]
+
+        all_xy_lens = prompt_lens + xy_lens
+        all_xy_max_len = all_xy_lens.max()
+        all_xy_embedded = torch.zeros(
+            (batch_size, all_xy_max_len, self.embedding_dim),
+            device=x.device,
+        )
+        all_xy_mask = torch.zeros((batch_size, all_xy_max_len), dtype=torch.bool)
+
+        for i in range(batch_size):
+            all_xy_embedded[i, : all_xy_lens[i]] = torch.cat(
+                [prompt_xy_embedded[i, : prompt_lens[i]], xy_embedded[i, : x_lens[i]]],
+                dim=0,
+            )
+            all_xy_mask[i, : all_xy_lens[i]] = True
+
+        y = torch.zeros((batch_size, 1), dtype=torch.long, device=x.device) # ! 需要一个bos标识符
+        stop = False
+        for _ in tqdm(range(1500)):
+            y_emb = self.speech_embedding(y)
+            xy_pos = torch.cat([all_xy_embedded, y_emb], dim=1)
+            xy_mask = torch.cat([all_xy_mask, torch.ones((batch_size, 1), dtype=torch.bool, device=x.device)], dim=1)
+
+            xy_dec = self.llm(
+                inputs_embeds=xy_pos,
+                attention_mask=xy_mask,
+            ).last_hidden_state
+
+            logits = self.predict_layer(xy_dec[:, -1])
+            samples = topk_sampling(
+                logits, top_k=top_k, top_p=1.0, temperature=temperature
+            )
+
+            if early_stop_num != -1 and y.shape[1] > early_stop_num:
+                print("use early stop num:", early_stop_num)
+                stop = True
+
+            if torch.argmax(logits, dim=-1)[0] == self.EOS or samples[0, 0] == self.EOS:
+                stop = True
+            if stop:
+                if y.shape[1] == 1:
+                    y = torch.cat([y, torch.zeros_like(samples)], dim=1)
+                    print("bad zero prediction")
+                print(f"T2S Decoding EOS [{y.shape[1]}]")
+                break
+
+            y = torch.cat([y, samples], dim=1)
+
+        return y[:, 1:]
+    
     def forward_deprecated(self, x, x_lens, y, y_lens):
         """
         x: bert_feature
@@ -196,7 +303,7 @@ class Text2SemanticDecoder(nn.Module):
         y_len = y_lens.max()
         # y_emb = self.ar_audio_embedding(y)
         # y_pos = self.ar_audio_position(y_emb)
-        y_pos = y  # ! 这里等数据处理的适合
+        y_pos = y  
 
         xy_padding_mask = torch.concat([x_mask, y_mask], dim=1)
         ar_xy_padding_mask = xy_padding_mask
@@ -235,7 +342,7 @@ class Text2SemanticDecoder(nn.Module):
         )
         logits = self.ar_predict_layer(xy_dec[:, x_len:]).permute(0, 2, 1)
         # loss
-        # from feiteng: 每次 duration 越多, 梯度更新也应该更多, 所以用 sum
+        # from feiteng: 每次 duration 越多, 梯度更新也应该更多, ���以用 sum
         loss = F.cross_entropy(logits, targets, reduction="sum")
         acc = self.ar_accuracy_metric(logits.detach(), targets).item()
         return loss, acc
@@ -252,9 +359,9 @@ class Text2SemanticDecoder(nn.Module):
     # ! 目前优先选择第一种方法，训练一个MLP层。
     # ! 将码本变大，比如总数16384
     # ! 理论上可以做到把码本完全去掉。问题在于: 去掉之后，如何学习在哪里结束语音。(否决，决定不去掉码本)
-    def infer(
+    def infer_deprecated(
         self,
-        x,  # ! x是全部文本的token (len, 1) 在GPT SOVITS2中无意义。
+        x,  # ! x是全部文本的token (len, 1) 在GPT SOVITS2���无意义。
         x_lens,
         prompts,  # ! prompts是参考音频的码本结果，后续考虑改成hubert直出不用经过encode码本。
         bert_feature,
@@ -282,7 +389,7 @@ class Text2SemanticDecoder(nn.Module):
             )  # ! 为什么不直接解码码本呢？这个embedding是为了从码本idx到embedding的映射，那么直接解码码本不就行了吗？注意！解码码本不是直接vq_model.decode而是vq_model.quantizer.decode()
             y_pos = self.ar_audio_position(
                 y_emb
-            )  # ! 换成RoPE，并且每次循环只推理最新的token而不是全部token，这很重要因为GPT从原理上来说为了更好推理下一个token，embedding就会被设计成绝对位置或者这种RoPE。
+            )  # ! 换成RoPE，并且每次循环只推理最新的token而不是全部token，这很重要因为GPT从原理上来说为了更好推理下一个token，embedding就会被设计���绝对位置或者这种RoPE。
             # ! ROPE还支持任意长度，这是比绝对位置更好的地方。
             # ! y_emb和y_pos移动到循环外面，然后在下面每次推理出新的token后在末尾添加。这样应该会极快地增加推理速度。
             # x 和逐渐增长的 y 一起输入给模型
@@ -369,7 +476,7 @@ class Text2SemanticDecoder(nn.Module):
             "k": [None] * self.num_layers,  ###根据配置自己手写
             "v": [None] * self.num_layers,
             # "xy_pos":None,##y_pos位置编码每次都不一样的没法缓存，每次都要重新拼xy_pos.主要还是写法原因，其实是可以历史统一一样的，但也没啥计算量就不管了
-            "y_emb": None,  ##只需要对最新的samples求emb，再拼历史的就行
+            "y_emb": None,  ##只需要对最新的samples求emb��再拼历史的就行
             # "logits":None,###原版就已经只对结尾求再拼接了，不用管
             # "xy_dec":None,###不需要，本来只需要最后一个做logits
             "first_infer": 1,
