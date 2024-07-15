@@ -2,6 +2,27 @@
 
 This name has been approved by the author of GPT-SoVITS, [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0).
 ### This project is still under development and is an improvement based on [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS). The main improvements are as follows:
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Text**|**Text**|
+|Text->Phone|Text->BPE|
+|Phone->Embedding|BPE->Embedding|
+|Roberta-Chinese|BGE-M3|
+|**Speech Encoder**|**Speech Encoder**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Embedding|
+|1024 Speech Token|4096 Speech Token|
+|**AR**|**AR**|
+|Old-Style GPT|Qwen2-0.3b|
+|**Speech Decoder**|**Speech Decoder**|
+|VITS|VITS2|
+|Hidden Size 192|Hidden Size 256|
+|2 Heads|4 Heads|
+|Inter Size 768|Inter Size 1024|
+|**Training**|**Training**|
+|No Zero-Shot Training|Inference Different Speech with same Speaker|
+|ZH,EN,JA|Multi-Lingual|
+|2k hours|Not Sure Yet|
 
 1. **Native support for multiple languages**: Not limited to Chinese, Japanese, and English, but supports any language in the world.
 2. **No need to specify a language**: It is always multilingual and you can freely mix languages when speaking.
@@ -10,21 +31,30 @@ This name has been approved by the author of GPT-SoVITS, [花儿不哭](https://
 5. **Reference audio fusion**: Multiple reference audio clips can be uploaded, and the resulting voice will be a fusion of multiple audio clips.
 6. **Faster inference**: Changing positional embedding to RoPE, eliminating the need to recompute the entire sequence's embedding for each token inference.
 
+
 ### **Data and collaboration solicitation**: Data is currently being collected. QQ 1715069210, if the data set meets the requirements, credit will be given in the project.
 
 #### Currently organizing modification ideas in the source code. Search for # ! to find comments. If interested, feel free to contact via the above QQ.
 
 ### List of Changes
 
-#### Codebook changes
-Single codebook -> 2 codebooks/4 codebooks
-#### GPT changes
-Replaced with qwen2-0.3b
-#### Audio encoding changes
-cnhubert -> ~~w2v-bert-2.0 (tentative, this is the most exaggerated 4.6m-hour multilingual pre-training done by meta. If the result sounds like a foreigner speaking Chinese, it will be replaced with cnhubert-large)~~/cnhubert-large/mHubert-147
-I found that training w2v-bert-2.0 is a bit difficult, training mHubert-147 is relatively easier, the size difference is fourfold, and in real tests, fp16 directly crashes, so only fp32 can be used. Also, mHubert is already large enough (600MB).
+
+#### Changes to the Codebook
+~~Single codebook -> 2-codebook/4-codebook~~
+
+The vocab size of $S^3$ is 4096 single codebook
+#### GPT Changes
+Switched to qwen2-0.3b
+#### Changes to Audio Encoding
+~~cnhubert -> ~~w2v-bert-2.0 (tentative, this is the most extensive multilingual pre-training set by Meta with 4.6 million hours. If the result sounds like a foreigner speaking Chinese, we'll switch to cnhubert-large)~~/cnhubert-large/mHubert-147~~
+~~I found that training w2v-bert-2.0 is a bit difficult, while training mHubert-147 is relatively easier. The size difference is fourfold, and fp16 directly crashes during tests, so only fp32 can be used. Moreover, mHubert is already large enough (600MB)~~
+
+Using the $S^3$ Encoder from CosyVoice with an external embedding layer
 #### Text encoding changes
 Remove phonemes and corresponding embeddings
+
+Phoneme -> BPE Tokenization
+
 cn-roberta -> BGE-m3
 #### Positional encoding changes
 Text and speech encoding each do sinusoidal -> globally do RoPE embedding.

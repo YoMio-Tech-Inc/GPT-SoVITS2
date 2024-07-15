@@ -2,6 +2,27 @@
 
 Este nome foi autorizado pelo autor do GPT-SoVITS, [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0).
 ### Este projeto ainda está em desenvolvimento, baseado no [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), com as seguintes principais melhorias:
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Texto**|**Texto**|
+|Texto->Telefone|Texto->BPE|
+|Telefone->Embedding|BPE->Embedding|
+|Roberta-Chinês|BGE-M3|
+|**Codificador de Fala**|**Codificador de Fala**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Embedding|
+|1024 Token de Fala|4096 Token de Fala|
+|**AR**|**AR**|
+|GPT Estilo Antigo|Qwen2-0.3b|
+|**Decodificador de Fala**|**Decodificador de Fala**|
+|VITS|VITS2|
+|Tamanho Oculto 192|Tamanho Oculto 256|
+|2 Cabeças|4 Cabeças|
+|Tamanho Interno 768|Tamanho Interno 1024|
+|**Treinamento**|**Treinamento**|
+|Sem Treinamento Zero-Shot|Inferência de Voz Diferente com o Mesmo Falante|
+|ZH,EN,JA|Multilíngue|
+|2000 horas|Ainda Não Definido|
 
 1. **Suporte nativo a múltiplos idiomas**: Não se limita a chinês, japonês e inglês, mas a qualquer idioma do mundo.
 2. **Não é necessário especificar o idioma**: Sempre é multilíngue, permitindo misturar idiomas livremente.
@@ -17,14 +38,21 @@ Este nome foi autorizado pelo autor do GPT-SoVITS, [花儿不哭](https://space.
 ### Lista de mudanças
 
 #### Mudanças no código
-De um único código -> 2 códigos/4 códigos.
+~~De um único código -> 2 códigos/4 códigos.~~
+
+O tamanho do vocabulário do $S^3$ é 4096 em um único código.
 #### Mudanças no GPT
 Mudança para qwen2-0.3b.
 #### Mudanças na codificação de áudio
-cnhubert -> ~~w2v-bert-2.0 (provisório, o conjunto de treinamento mais extenso de 4.6m horas multilíngues da Meta. Se resultar em pronúncias estranhas, mudar para cnhubert-large)~~ / cnhubert-large / mHubert-147.
-Descobri que treinar w2v-bert-2.0 é difícil, enquanto que mHubert-147 é mais fácil, embora seja quatro vezes maior e fp16 falhe, só fp32 funciona. Além disso, mHubert é suficientemente grande (600MB).
+cnhubert -> ~~w2v-bert-2.0 (provisório, o conjunto de treinamento mais extenso de 4.6m horas multilíngues da Meta. Se resultar em pronúncias estranhas, mudar para cnhubert-large)~~ ~~/ cnhubert-large / mHubert-147.~~
+~~Descobri que treinar w2v-bert-2.0 é difícil, enquanto que mHubert-147 é mais fácil, embora seja quatro vezes maior e fp16 falhe, só fp32 funciona. Além disso, mHubert é suficientemente grande (600MB).~~
+
+Usando o codificador $S^3$ do CosyVoice, com uma camada de embedding externa.
 #### Mudanças na codificação de texto
 Eliminar fonemas e seus correspondentes embeddings.
+
+Fonema -> Tokenização BPE.
+
 cn-roberta -> BGE-m3.
 #### Mudanças no posicionamento de embeddings
 Separar codificação de texto e áudio em sinusoidal -> fazer tudo com RoPE embedding.

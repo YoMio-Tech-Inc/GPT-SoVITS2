@@ -2,6 +2,27 @@
 
 Bu isim, GPT-SoVITS'in yazarı [花儿不哭](https://space.bilibili.com/5760446?spm_id_from=333.337.0.0) tarafından izin alınmıştır.
 ### Bu proje hala geliştirme aşamasındadır ve [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) temel alınarak iyileştirilmiştir. Ana iyileştirme noktaları aşağıdaki gibidir:
+|GPT-SoVITS|GPT-SoVITS2|
+|:----:|:----:|
+|**Metin**|**Metin**|
+|Metin->Telefon|Metin->BPE|
+|Telefon->Gömme|BPE->Gömme|
+|Roberta-Çince|BGE-M3|
+|**Konuşma Kodlayıcı**|**Konuşma Kodlayıcı**|
+|Hubert|$S^3$|
+|VQ|$S^3$->Gömme|
+|1024 Konuşma Jetonu|4096 Konuşma Jetonu|
+|**AR**|**AR**|
+|Eski Tarz GPT|Qwen2-0.3b|
+|**Konuşma Kod Çözücü**|**Konuşma Kod Çözücü**|
+|VITS|VITS2|
+|Gizli Boyut 192|Gizli Boyut 256|
+|2 Kafa|4 Kafa|
+|Ara Boyut 768|Ara Boyut 1024|
+|**Eğitim**|**Eğitim**|
+|Sıfır-Atış Eğitimi Yok|Aynı Konuşmacı ile Farklı Konuşma Çıkarımı|
+|ZH,EN,JA|Çok Dilli|
+|2000 saat|Henüz Belli Değil|
 
 1. **Yerel çoklu dil desteği**: Sadece Çince, Japonca ve İngilizce ile sınırlı kalmayıp dünya üzerindeki herhangi bir dili destekler.
 2. **Dil belirtmeye gerek yok**: Her zaman çoklu dilde olabilir ve diller arasında serbestçe karışık konuşabilirsiniz.
@@ -17,14 +38,20 @@ Bu isim, GPT-SoVITS'in yazarı [花儿不哭](https://space.bilibili.com/5760446
 ### Değişiklik Listesi
 
 #### Kod kitabındaki değişiklikler
-Tek kod kitabı -> 2 kod kitabı/4 kod kitabı
+~~Tek kod kitabı -> 2 kod kitabı/4 kod kitabı~~
+
+$S^3$'ün kelime dağarcığı boyutu 4096 tek kodludur.
 #### GPT değişiklikleri
 qwen2-0.3b ile değiştirildi
 #### Ses kodlamasındaki değişiklikler
-cnhubert -> ~~w2v-bert-2.0 (geçici olarak, bu meta tarafından şu anda en çarpıcı 4.6m saatlik çok dilli ön eğitim yapılmaktadır. Sonuç yabancının Çince konuşması gibi olursa cnhubert-large ile değiştirilecek)~~/cnhubert-large/mHubert-147
-w2v-bert-2.0 eğitiminin biraz zor olduğunu fark ettim, mHubert-147 eğitimi daha kolay olacak, boyutu dört kat daha küçük ve gerçek testte fp16 doğrudan çöküyor, sadece fp32 kullanılabilir. Ayrıca mHubert zaten yeterince büyük (600MB).
+cnhubert -> ~~w2v-bert-2.0 (geçici olarak, bu meta tarafından şu anda en çarpıcı 4.6m saatlik çok dilli ön eğitim yapılmaktadır. Sonuç yabancının Çince konuşması gibi olursa cnhubert-large ile değiştirilecek)~~ ~~/cnhubert-large/mHubert-147~~ ~~w2v-bert-2.0 eğitiminin biraz zor olduğunu fark ettim, mHubert-147 eğitimi daha kolay olacak, boyutu dört kat daha küçük ve gerçek testte fp16 doğrudan çöküyor, sadece fp32 kullanılabilir. Ayrıca mHubert zaten yeterince büyük (600MB)~~
+
+CosyVoice'taki $S^3$ Kodlayıcıyı kullanarak, harici bir Gömme katmanı bağlama.
 #### Metin kodlamasındaki değişiklikler
 Fonemleri ve ilgili embedding'leri kaldırın
+
+Fonem -> BPE Tokenizasyonu.
+
 cn-roberta -> BGE-m3
 #### Pozisyon kodlamasındaki değişiklikler
 Metin ve ses kodlamasını ayrı ayrı sinusoidal -> global olarak RoPE embedding yapın.
