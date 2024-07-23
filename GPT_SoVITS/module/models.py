@@ -17,12 +17,12 @@ import torch
 from module import attentions, commons, modules
 from module.commons import get_padding, init_weights
 from module.mrte_model import MRTE
+from rotary_embedding_torch import RotaryEmbedding
 from torch import nn
 from torch.cuda.amp import autocast
 from torch.nn import Conv1d, Conv2d, ConvTranspose1d
 from torch.nn import functional as F
 from torch.nn.utils import remove_weight_norm, spectral_norm, weight_norm
-from vector_quantize_pytorch import GroupedResidualFSQ
 
 
 class TextEncoder(nn.Module):
@@ -60,6 +60,7 @@ class TextEncoder(nn.Module):
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
         self.text_embedding = nn.Embedding(vocab_size, hidden_channels)
+        self.rotary_emb = RotaryEmbedding(dim=hidden_channels)
         self.mrte = MRTE(hidden_channels, n_heads)
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
@@ -70,7 +71,10 @@ class TextEncoder(nn.Module):
         text_feature_mask = torch.unsqueeze(
             commons.sequence_mask(token_lengths, token.size(1)), 1
         ).to(y.dtype)
-        text_feature = self.text_embedding(token).transpose(1, 2)
+        text_feature = self.text_embedding(token)
+        text_feature = self.rotary_emb.rotate_queries_or_keys(text_feature).transpose(
+            1, 2
+        )
         text_feature = self.encoder_text(
             text_feature * text_feature_mask, text_feature_mask
         )
@@ -446,7 +450,6 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         return y_d_rs, y_d_gs, fmap_rs, fmap_gs
 
 
-
 class SynthesizerTrn(nn.Module):
     """
     Synthesizer for Training
@@ -469,9 +472,6 @@ class SynthesizerTrn(nn.Module):
         upsample_rates,
         upsample_initial_channel,
         upsample_kernel_sizes,
-        use_sdp=True,
-        semantic_frame_rate=None,
-        freeze_quantizer=None,
     ):
         super().__init__()
         self.spec_channels = spec_channels
@@ -491,7 +491,8 @@ class SynthesizerTrn(nn.Module):
         self.segment_size = segment_size
         self.gin_channels = hidden_channels
 
-        self.use_sdp = use_sdp
+        self.embedding = nn.Embedding(4097, hidden_channels)
+        self.rotary_emb = RotaryEmbedding(dim=hidden_channels)
         self.enc_p = TextEncoder(
             inter_channels,
             hidden_channels,
@@ -520,65 +521,32 @@ class SynthesizerTrn(nn.Module):
             16,
             gin_channels=hidden_channels,
         )
-        self.flow = (
-            ResidualCouplingTransformersBlock(  # ! USE transformer block from VITS2
-                inter_channels, hidden_channels, 5, 1, 4, gin_channels=hidden_channels
-            )
+        self.flow = ResidualCouplingTransformersBlock(
+            inter_channels, hidden_channels, 5, 1, 4, gin_channels=hidden_channels
         )
 
         self.ref_enc = modules.MelStyleEncoder(
             spec_channels, style_vector_dim=hidden_channels
         )
 
-        ssl_dim = 768
-        assert semantic_frame_rate in ["25hz", "50hz"]
-        self.semantic_frame_rate = semantic_frame_rate
-        if semantic_frame_rate == "25hz":
-            self.ssl_proj = nn.Conv1d(ssl_dim, ssl_dim, 2, stride=2)
-        else:
-            self.ssl_proj = nn.Conv1d(ssl_dim, ssl_dim, 1, stride=1)
-
-        self.quantizer = GroupedResidualFSQ(
-            dim=ssl_dim, levels=[8, 5, 5, 5], num_quantizers=2, groups=2
-        )
-        self.freeze_quantizer = freeze_quantizer
-
-    def forward(self, ssl, y, y_lengths, token, token_lengths):
+    def forward(self, speech_token, y, y_lengths, text_token, text_token_lengths):
         y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, y.size(2)), 1).to(
             y.dtype
         )
+
         ge = self.ref_enc(y * y_mask, y_mask)
 
-        with autocast(enabled=False):
-            maybe_no_grad = (
-                torch.no_grad() if self.freeze_quantizer else contextlib.nullcontext()
-            )
-            with maybe_no_grad:
-                if self.freeze_quantizer:
-                    self.ssl_proj.eval()
-                    self.quantizer.eval()
-            ssl = self.ssl_proj(ssl)
-            quantized, _ = self.quantizer(ssl.transpose(1, 2))
-            quantized = quantized.transpose(1, 2)
+        speech_feat = self.embedding(speech_token)
+        speech_feat = self.rotary_emb.rotate_queries_or_keys(speech_feat)
 
-        if (
-            self.semantic_frame_rate == "25hz"
-        ):  # ! 搞懂这个framerate，为什么25和50明明在同一个长度下得到的音频长度也一样。25的意义在哪里？
-            quantized = F.interpolate(
-                quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
-            )
         x, m_p, logs_p, y_mask = self.enc_p(
-            quantized, y_lengths, token, token_lengths, ge
+            speech_feat, y_lengths, text_token, text_token_lengths, ge
         )
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=ge)
         z_p = self.flow(z, y_mask, g=ge)
-        print(z.shape)
-        z_slice, ids_slice = (
-            commons.rand_slice_segments(  # ! 为什么要rand_slice_segements?
-                z, y_lengths, self.segment_size
-            )
+        z_slice, ids_slice = commons.rand_slice_segments(
+            z, y_lengths, self.segment_size
         )
-        print(z_slice.shape, ids_slice.shape)
         o = self.dec(z_slice, g=ge)
         return (
             o,
@@ -586,25 +554,28 @@ class SynthesizerTrn(nn.Module):
             y_mask,
             y_mask,
             (z, z_p, m_p, logs_p, m_q, logs_q),
-            quantized,
+            speech_feat,
         )
 
-    def infer(self, ssl, y, y_lengths, token, token_lengths, noise_scale=0.5):
+    def infer(
+        self,
+        speech_token,
+        y,
+        y_lengths,
+        text_token,
+        text_token_lengths,
+        noise_scale=0.5,
+    ):
         y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, y.size(2)), 1).to(
             y.dtype
         )
         ge = self.ref_enc(y * y_mask, y_mask)
 
-        ssl = self.ssl_proj(ssl)
-        quantized, _ = self.quantizer(ssl.transpose(-1, -2))
-        quantized = quantized.transpose(-1, -2)
-        if self.semantic_frame_rate == "25hz":
-            quantized = F.interpolate(
-                quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
-            )
+        speech_feat = self.embedding(speech_token)
+        speech_feat = self.rotary_emb.rotate_queries_or_keys(speech_feat)
 
         x, m_p, logs_p, y_mask = self.enc_p(
-            quantized, y_lengths, token, token_lengths, ge
+            speech_feat, y_lengths, text_token, text_token_lengths, ge
         )
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
 
@@ -612,38 +583,3 @@ class SynthesizerTrn(nn.Module):
 
         o = self.dec((z * y_mask)[:, :, :], g=ge)
         return o, y_mask, (z, z_p, m_p, logs_p)
-
-    @torch.no_grad()
-    def decode(self, codes, token, refer, noise_scale=0.5):
-        ge = None
-        if refer is not None:
-            refer_lengths = torch.LongTensor([refer.size(2)]).to(refer.device)
-            refer_mask = torch.unsqueeze(
-                commons.sequence_mask(refer_lengths, refer.size(2)), 1
-            ).to(refer.dtype)
-            ge = self.ref_enc(refer * refer_mask, refer_mask)
-
-        y_lengths = torch.LongTensor([codes.size(2) * 2]).to(codes.device)
-        token_lengths = torch.LongTensor([token.size(-1)]).to(token.device)
-
-        quantized = self.quantizer.get_output_from_indices(codes)
-        quantized = quantized.transpose(-1, -2)
-        if self.semantic_frame_rate == "25hz":
-            quantized = F.interpolate(
-                quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
-            )
-
-        x, m_p, logs_p, y_mask = self.enc_p(
-            quantized, y_lengths, token, token_lengths, ge
-        )
-        z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
-
-        z = self.flow(z_p, y_mask, g=ge, reverse=True)
-
-        o = self.dec((z * y_mask)[:, :, :], g=ge)
-        return o
-
-    def extract_latent(self, x):
-        ssl = self.ssl_proj(x)
-        _, codes = self.quantizer(ssl.transpose(-1, -2))
-        return codes.transpose(-1, -2)

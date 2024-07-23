@@ -28,3 +28,4 @@ Faster_Whisper
 wordsegment
 sentence_transformers
 pyloudnorm
+openai-whisper

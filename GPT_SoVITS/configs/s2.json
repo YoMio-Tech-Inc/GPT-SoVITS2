@@ -78,12 +78,10 @@
       2,
       2
     ],
-    // "n_layers_q": 3,
     "use_spectral_norm": false,
     "gin_channels": 512,
-    "semantic_frame_rate": "50hz",
-    "freeze_quantizer": true
+    "semantic_frame_rate": "50hz"
   },
   "s2_ckpt_dir": "logs/s2/big2k1",
-  "content_module": "cnhubert"
+  "exp_dir": "./dataset"
 }

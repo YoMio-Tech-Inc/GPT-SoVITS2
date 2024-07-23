@@ -1,6 +1,8 @@
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
+FROM pytorch/pytorch:2.3.1-cuda11.8-cudnn8-devel
 
 WORKDIR /workspaces
+
+RUN sed -i 's/http:\/\/\(archive\|security\).ubuntu.com/http:\/\/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 RUN apt update
 
