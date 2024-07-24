@@ -9,8 +9,8 @@ import utils
 from module import commons
 from module.data_utils import (
     DistributedBucketSampler,
-    TextAudioSpeakerCollate,
-    TextAudioSpeakerLoader,
+    TextAudioCollate,
+    TextAudioLoader,
 )
 from module.losses import discriminator_loss, feature_loss, generator_loss, kl_loss
 from module.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
@@ -40,7 +40,6 @@ global_step = 0
 device = "cpu"  # cuda以外的设备，等mps优化后加入
 
 hps = utils.get_hparams(stage=2)
-os.environ["CUDA_VISIBLE_DEVICES"] = hps.train.gpu_numbers.replace("-", ",")
 
 
 def main():
@@ -64,7 +63,7 @@ def main():
 def run(rank, n_gpus, hps):
     global global_step
     if rank == 0:
-        logger = utils.get_logger(hps.data.exp_dir)
+        logger = utils.get_logger(hps.exp_dir)
         logger.info(hps)
         # utils.check_git_hash(hps.s2_ckpt_dir)
         writer = SummaryWriter(log_dir=hps.s2_ckpt_dir)
@@ -80,7 +79,7 @@ def run(rank, n_gpus, hps):
     if torch.cuda.is_available():
         torch.cuda.set_device(rank)
 
-    train_dataset = TextAudioSpeakerLoader(hps.data)  ########
+    train_dataset = TextAudioLoader(hps.data)  ########
     train_sampler = DistributedBucketSampler(
         train_dataset,
         hps.train.batch_size,
@@ -108,16 +107,21 @@ def run(rank, n_gpus, hps):
         rank=rank,
         shuffle=True,
     )
-    collate_fn = TextAudioSpeakerCollate()
+    collate_fn = TextAudioCollate()
+    # train_loader = DataLoader(
+    #     train_dataset,
+    #     # num_workers=6,
+    #     shuffle=False,
+    #     pin_memory=True,
+    #     collate_fn=collate_fn,
+    #     batch_sampler=train_sampler,
+    #     persistent_workers=True,
+    #     prefetch_factor=16,
+    # )
     train_loader = DataLoader(
         train_dataset,
-        num_workers=6,
-        shuffle=False,
-        pin_memory=True,
         collate_fn=collate_fn,
         batch_sampler=train_sampler,
-        persistent_workers=True,
-        prefetch_factor=16,
     )
     # if rank == 0:
     #     eval_dataset = TextAudioSpeakerLoader(hps.data.validation_files, hps.data, val=True)
@@ -129,22 +133,20 @@ def run(rank, n_gpus, hps):
         SynthesizerTrn(
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
-            n_speakers=hps.data.n_speakers,
             **hps.model,
         ).cuda(rank)
         if torch.cuda.is_available()
         else SynthesizerTrn(
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
-            n_speakers=hps.data.n_speakers,
             **hps.model,
         ).to(device)
     )
 
     net_d = (
-        MultiPeriodDiscriminator(hps.model.use_spectral_norm).cuda(rank)
+        MultiPeriodDiscriminator().cuda(rank)
         if torch.cuda.is_available()
-        else MultiPeriodDiscriminator(hps.model.use_spectral_norm).to(device)
+        else MultiPeriodDiscriminator().to(device)
     )
     for name, param in net_g.named_parameters():
         if not param.requires_grad:
@@ -168,15 +170,18 @@ def run(rank, n_gpus, hps):
             {"params": base_params, "lr": hps.train.learning_rate},
             {
                 "params": net_g.enc_p.text_embedding.parameters(),
-                "lr": hps.train.learning_rate * hps.train.text_low_lr_rate,
+                # "lr": hps.train.learning_rate * hps.train.text_low_lr_rate,
+                "lr": hps.train.learning_rate,
             },
             {
                 "params": net_g.enc_p.encoder_text.parameters(),
-                "lr": hps.train.learning_rate * hps.train.text_low_lr_rate,
+                # "lr": hps.train.learning_rate * hps.train.text_low_lr_rate,
+                "lr": hps.train.learning_rate,
             },
             {
                 "params": net_g.enc_p.mrte.parameters(),
-                "lr": hps.train.learning_rate * hps.train.text_low_lr_rate,
+                # "lr": hps.train.learning_rate * hps.train.text_low_lr_rate,
+                "lr": hps.train.learning_rate,
             },
         ],
         hps.train.learning_rate,
@@ -307,13 +312,13 @@ def train_and_evaluate(
     net_g.train()
     net_d.train()
     for batch_idx, (
-        ssl,
-        ssl_lengths,
+        speech_token,
+        _,
         spec,
         spec_lengths,
         y,
         y_lengths,
-        text,
+        text_token,
         text_lengths,
     ) in enumerate(tqdm(train_loader)):
         if torch.cuda.is_available():
@@ -325,31 +330,27 @@ def train_and_evaluate(
                 y.cuda(rank, non_blocking=True),
                 y_lengths.cuda(rank, non_blocking=True),
             )
-            ssl = ssl.cuda(rank, non_blocking=True)
-            ssl.requires_grad = False
-            # ssl_lengths = ssl_lengths.cuda(rank, non_blocking=True)
-            text, text_lengths = (
-                text.cuda(rank, non_blocking=True),
+            speech_token = speech_token.cuda(rank, non_blocking=True)
+            text_token, text_lengths = (
+                text_token.cuda(rank, non_blocking=True),
                 text_lengths.cuda(rank, non_blocking=True),
             )
         else:
             spec, spec_lengths = spec.to(device), spec_lengths.to(device)
             y, y_lengths = y.to(device), y_lengths.to(device)
-            ssl = ssl.to(device)
-            ssl.requires_grad = False
-            # ssl_lengths = ssl_lengths.cuda(rank, non_blocking=True)
-            text, text_lengths = text.to(device), text_lengths.to(device)
+            speech_token = speech_token.to(device)
+            speech_token.requires_grad = False
+            text_token, text_lengths = text_token.to(device), text_lengths.to(device)
 
         with autocast(enabled=hps.train.fp16_run):
             (
                 y_hat,
-                kl_ssl,
                 ids_slice,
                 x_mask,
                 z_mask,
                 (z, z_p, m_p, logs_p, m_q, logs_q),
                 stats_ssl,
-            ) = net_g(ssl, spec, spec_lengths, text, text_lengths)
+            ) = net_g(speech_token, spec, spec_lengths, text_token, text_lengths)
 
             mel = spec_to_mel_torch(
                 spec,
@@ -399,7 +400,7 @@ def train_and_evaluate(
 
                 loss_fm = feature_loss(fmap_r, fmap_g)
                 loss_gen, losses_gen = generator_loss(y_d_hat_g)
-                loss_gen_all = loss_gen + loss_fm + loss_mel + kl_ssl * 1 + loss_kl
+                loss_gen_all = loss_gen + loss_fm + loss_mel + loss_kl
 
         optim_g.zero_grad()
         scaler.scale(loss_gen_all).backward()
@@ -411,7 +412,7 @@ def train_and_evaluate(
         if rank == 0:
             if global_step % hps.train.log_interval == 0:
                 lr = optim_g.param_groups[0]["lr"]
-                losses = [loss_disc, loss_gen, loss_fm, loss_mel, kl_ssl, loss_kl]
+                losses = [loss_disc, loss_gen, loss_fm, loss_mel, loss_kl]
                 logger.info(
                     "Train Epoch: {} [{:.0f}%]".format(
                         epoch, 100.0 * batch_idx / len(train_loader)
@@ -430,7 +431,6 @@ def train_and_evaluate(
                     {
                         "loss/g/fm": loss_fm,
                         "loss/g/mel": loss_mel,
-                        "loss/g/kl_ssl": kl_ssl,
                         "loss/g/kl": loss_kl,
                     }
                 )
@@ -498,7 +498,7 @@ def train_and_evaluate(
                     "%s/logs_s2" % hps.data.exp_dir, "D_{}.pth".format(233333333333)
                 ),
             )
-        if rank == 0 and hps.train.if_save_every_weights == True:
+        if rank == 0 and hps.train.if_save_every_weights:
             if hasattr(net_g, "module"):
                 ckpt = net_g.module.state_dict()
             else:

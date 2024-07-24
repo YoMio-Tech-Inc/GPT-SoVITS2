@@ -3,9 +3,7 @@ from collections import OrderedDict
 from time import time as ttime
 import shutil,os
 import torch
-from tools.i18n.i18n import I18nAuto
 
-i18n = I18nAuto()
 
 def my_save(fea,path):#####fix issue: torch.save doesn't support chinese path
     dir=os.path.dirname(path)

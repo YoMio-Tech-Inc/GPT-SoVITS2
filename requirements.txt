@@ -7,7 +7,7 @@ pytorch-lightning
 gradio==3.38.0
 gradio_client==0.8.1
 ffmpeg-python
-onnxruntime
+onnxruntime-gpu
 tqdm
 funasr==1.0.0
 cn2an

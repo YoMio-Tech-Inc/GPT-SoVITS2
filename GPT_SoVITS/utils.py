@@ -68,6 +68,7 @@ from time import time as ttime
 import shutil
 def my_save(fea,path):#####fix issue: torch.save doesn't support chinese path
     dir=os.path.dirname(path)
+    os.makedirs(dir, exist_ok=True)  # 确保目录存在
     name=os.path.basename(path)
     tmp_path="%s.pth"%(ttime())
     torch.save(fea,tmp_path)

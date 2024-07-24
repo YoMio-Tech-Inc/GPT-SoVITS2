@@ -160,7 +160,7 @@ class Decoder(nn.Module):
         return x
 
 
-class MultiHeadAttention(nn.Module): # ! Multihead attention是否可以优化一下
+class MultiHeadAttention(nn.Module):
     def __init__(
         self,
         channels,

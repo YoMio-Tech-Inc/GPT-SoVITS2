@@ -45,7 +45,6 @@ class TextEncoder(nn.Module):
         self.n_layers = n_layers
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
-        self.ssl_proj = nn.Conv1d(768, hidden_channels, 1)
 
         self.encoder_ssl = attentions.Encoder(
             hidden_channels,
@@ -78,7 +77,6 @@ class TextEncoder(nn.Module):
         text_feature = self.encoder_text(
             text_feature * text_feature_mask, text_feature_mask
         )
-        y = self.ssl_proj(y * y_mask) * y_mask
         y = self.mrte(y, y_mask, text_feature, text_feature_mask, ge)
         y = self.encoder_ssl(y * y_mask, y_mask, g=ge)
 
@@ -537,7 +535,7 @@ class SynthesizerTrn(nn.Module):
         ge = self.ref_enc(y * y_mask, y_mask)
 
         speech_feat = self.embedding(speech_token)
-        speech_feat = self.rotary_emb.rotate_queries_or_keys(speech_feat)
+        speech_feat = self.rotary_emb.rotate_queries_or_keys(speech_feat).transpose(-1, -2)
 
         x, m_p, logs_p, y_mask = self.enc_p(
             speech_feat, y_lengths, text_token, text_token_lengths, ge
