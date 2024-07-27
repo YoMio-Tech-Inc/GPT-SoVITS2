@@ -27,14 +27,6 @@ logging.getLogger("matplotlib").setLevel(logging.INFO)
 logging.getLogger("h5py").setLevel(logging.INFO)
 logging.getLogger("numba").setLevel(logging.INFO)
 
-
-# torch.backends.cudnn.benchmark = False
-# torch.backends.cudnn.deterministic = False
-# ###反正A100fp32更快，那试试tf32吧
-# torch.backends.cuda.matmul.allow_tf32 = True
-# torch.backends.cudnn.allow_tf32 = True
-# torch.set_float32_matmul_precision("medium")  # 最低精度但最快（也就快一丁点），对于结果造成不了影响
-# # from config import pretrained_s2G,pretrained_s2D
 global_step = 0
 
 device = "cpu"  # cuda以外的设备，等mps优化后加入

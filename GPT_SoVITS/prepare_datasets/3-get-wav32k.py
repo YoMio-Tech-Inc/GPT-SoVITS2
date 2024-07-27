@@ -5,7 +5,7 @@ import torchaudio
 import librosa
 from scipy.io import wavfile
 from tqdm import tqdm
-
+from pyloudnorm import Meter
 
 def load_audio(audio, target_sr):
     speech, sample_rate = torchaudio.load(audio)
@@ -27,13 +27,35 @@ def postprocess(speech, target_sr, top_db=60, hop_length=220, win_length=440):
     speech = torch.concat([speech, torch.zeros(1, int(target_sr * 0.2))], dim=1)
     return speech
 
+def balance_loudness(audio, target_loudness=-23.0):
+    meter = Meter(32000)  # 创建一个响度计量器
+
+    # 确保audio是NumPy数组
+    if isinstance(audio, torch.Tensor):
+        audio = audio.squeeze().numpy()
+
+    # 测量积分响度
+    loudness = meter.integrated_loudness(audio)
+
+    # 计算增益
+    gain_db = target_loudness - loudness
+    gain_linear = 10 ** (gain_db / 20.0)
+
+    # 应用增益
+    balanced_audio = audio * gain_linear
+
+    # 应用软限幅以防止削波
+    balanced_audio = np.tanh(balanced_audio)
+
+    return balanced_audio
 
 def rewrite_wavfile(wav_path, text, target_sr=32000):
     audio = load_audio(wav_path, target_sr)
     audio = postprocess(audio, target_sr)
-    audio_np = audio.squeeze().numpy()
+    audio_np = audio.squeeze().numpy()  # 转换为NumPy数组
+    balanced_audio = balance_loudness(audio_np)
     new_wav_path = wav_path + ".wav"
-    wavfile.write(new_wav_path, target_sr, (audio_np * 32768).astype(np.int16))
+    wavfile.write(new_wav_path, target_sr, (balanced_audio * 32768).astype(np.int16))
     # os.remove(wav_path)
 
 

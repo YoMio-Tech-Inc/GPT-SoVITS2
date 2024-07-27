@@ -570,7 +570,9 @@ class SynthesizerTrn(nn.Module):
         ge = self.ref_enc(y * y_mask, y_mask)
 
         speech_feat = self.embedding(speech_token)
-        speech_feat = self.rotary_emb.rotate_queries_or_keys(speech_feat)
+        speech_feat = self.rotary_emb.rotate_queries_or_keys(speech_feat).transpose(
+            -1, -2
+        )
 
         x, m_p, logs_p, y_mask = self.enc_p(
             speech_feat, y_lengths, text_token, text_token_lengths, ge
