@@ -31,8 +31,6 @@ Bu isim, GPT-SoVITS'in yazarı [花儿不哭](https://space.bilibili.com/5760446
 5. **Referans ses kaydı birleşimi**: Birden fazla referans ses kaydı yükleyebilir ve elde edilen ses, birden fazla ses kaydının birleşimi olur.
 6. **Daha hızlı çıkarım**: Positional embedding'i RoPE olarak değiştirerek, her bir token çıkarımında tüm dizinin embedding'ini yeniden hesaplama gereksinimini ortadan kaldırır.
 
-### **Veri ve iş birliği çağrısı**: Şu anda veri toplanmaktadır. QQ 1715069210, uygun veri setleri proje kredisi alacaktır.
-
 #### Şu anda kaynak kodda değişiklik fikirleri düzenlenmektedir. # ! araması yaparak açıklamaları bulabilirsiniz. İlginiz varsa yukarıdaki QQ ile iletişime geçmekten çekinmeyin.
 
 ### Değişiklik Listesi
@@ -87,10 +85,6 @@ Aslında genel olarak, değişiklikler temel olarak
 8. Orijinalde mantıksız gördüğüm yerleri değiştirdim. Örneğin, hubert zaten sesin embedding'i olarak kullanılıyordu, token olarak kod kitabı vardı, neden ar_audio_embedding eklememiz gerekiyordu. Ayrıca orijinalde fonem olduğu için fonemlere bir embedding vermek gerekiyordu, çok sayıda ayrı embedding eğitim alıyordu ancak zaten bert ve hubert kullanıyorduk. Ayrıca, ayrı metin embedding ve ses embedding'i bağlamdaki ses ve metni dikkate almayacaktır, doğrudan GPT'ye girip attention ile ilişkileri bulmak daha iyidir
 
 Buraya kadar okuduysanız, anladığınızı gösterir, bu projeye katılmaya davetlisiniz!
-
-**QQ: 1715069210**
-
-**微信: JunityZ**
 
 #### Hızlı Not
 Bugün birçok makale okudum, VALLE2 makalesi de dahil, birçok yeni fikir edindim. Şu anda ar_audio_embedding ve ar_text_embedding'in tarihsel bir kalıntı olduğu çok önemli bir konu var.
