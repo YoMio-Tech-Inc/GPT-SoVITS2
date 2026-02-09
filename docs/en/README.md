@@ -32,8 +32,6 @@ This name has been approved by the author of GPT-SoVITS, [花儿不哭](https://
 6. **Faster inference**: Changing positional embedding to RoPE, eliminating the need to recompute the entire sequence's embedding for each token inference.
 
 
-### **Data and collaboration solicitation**: Data is currently being collected. QQ 1715069210, if the data set meets the requirements, credit will be given in the project.
-
 #### Currently organizing modification ideas in the source code. Search for # ! to find comments. If interested, feel free to contact via the above QQ.
 
 ### List of Changes
@@ -90,10 +88,6 @@ Overall, the changes are mainly:
 8. Changed parts that I thought were unreasonable. For example, since hubert is used as the audio embedding and codebooks as tokens, why add an ar_audio_embedding. Also, since there were phonemes, an embedding had to be assigned to them, resulting in many separate embeddings training, although bert and hubert were already used. Moreover, separate text and audio embeddings would not consider the context of audio and text, better to directly input into GPT and use attention to find relationships.
 
 If you've read this far, it means you understand, and you're welcome to join this project!
-
-**QQ: 1715069210**
-
-**WeChat: JunityZ**
 
 #### Quick Note
 Today I read many papers, including the VALLE2 paper, and had many new ideas. One important issue is that the current ar_audio_embedding and ar_text_embedding are historical legacy problems.
