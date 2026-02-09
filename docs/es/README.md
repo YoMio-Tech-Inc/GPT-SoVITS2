@@ -31,8 +31,6 @@ Este nombre ha sido autorizado por el autor de GPT-SoVITS, [花儿不哭](https:
 5. **Fusión de audios de referencia**: Se pueden subir múltiples audios de referencia y la voz resultante será una fusión de estos.
 6. **Inferencia más rápida**: Cambiar el positional embedding a RoPE, eliminando la necesidad de recalcular todo el embedding de la secuencia con cada token.
 
-### **Recopilación de datos y colaboración**: Actualmente estamos recopilando datos. Contacto QQ 1715069210. Los datos calificados recibirán crédito en el proyecto.
-
 #### Actualmente estamos organizando las ideas de los cambios en el código fuente, busca # ! para encontrar comentarios. Si estás interesado, añade el QQ anterior para intercambiar ideas.
 
 ### Lista de cambios
@@ -88,10 +86,6 @@ En resumen, los cambios son:
 8. Corrección de inconsistencias, optimizando embeddings y eliminando redundancias innecesarias.
 
 Si has entendido hasta aquí, únete al proyecto!
-
-**QQ: 1715069210**
-
-**WeChat: JunityZ**
 
 #### Nota rápida
 Hoy revisé varios artículos, incluido el de VALLE2, y tuve nuevas ideas. Un punto importante es que los embeddings ar_audio y ar_text son problemas heredados históricos.
