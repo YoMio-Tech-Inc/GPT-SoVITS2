@@ -96,10 +96,6 @@ text embedding(len(symbol)) -> text embedding(250000)[BGE m3 tokenizer]
 
 都看到这里了,说明你看懂了,欢迎来加入这个项目!
 
-**QQ: 1715069210**
-
-**微信: JunityZ**
-
 ### 讨论
 是否一定需要BGE-m3呢？直接用BGE-m3的tokenizer，然后自己训练一个text-embedding不行吗？或者融合他们，自己训练一个embedding再加上BGE-m3的embedding。
 自回归模型深度很重要，但是深度不能被显卡的并行能力所利用，batch size = 1和 batch size = 10推理一次的速度是一样的。但实际上推理一句话只能batch size = 1
